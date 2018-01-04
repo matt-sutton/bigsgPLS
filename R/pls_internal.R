@@ -49,6 +49,31 @@ soft.thresholding.sparse.group <- function(x,ind,lambda,alpha,ind.block.zero){
 }
 
 
+get_sparsity<- function(keep, maxKeep, ncomp){
+
+  #--  Compute sparsity for multiple components    -----#
+  #--  Correct for mis-matched sparsity or NULL values -#
+
+  sparsity <- maxKeep - keep
+
+  if(length(sparsity) == 0)
+    {
+    #-- if no sparsity specified --#
+    return(rep(0, ncomp))
+  }
+
+  if(length(sparsity) < ncomp)
+  {
+    if(length(sparsity) != 1){
+      print("Sparsity looks suspicious. Using a repeated sequence. \n")
+    }
+    return(rep(sparsity, ncomp))
+  }
+
+  return(sparsity)
+}
+
+
 get_lambda<- function(sparsity, ind, x, alpha){
 
   #-- No Sparsity --#

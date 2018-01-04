@@ -72,8 +72,8 @@
 #'
 #'
 
-algo1 <- function(Xdes, Ydes, lambda, regularised="none",keepX=NULL,keepY=NULL,H = 3,
-                  case = 2, epsilon = 10 ^ -6, ng = 1,ind.block.x=NULL,ind.block.y=NULL) {
+algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
+                  case = 2, epsilon = 10 ^ -6, ng = 1, ind.block.x=NULL, ind.block.y=NULL) {
 
   #-- readchunk internal funciton --#
   readchunk <- function(X, g, size.chunk) {
@@ -92,16 +92,16 @@ algo1 <- function(Xdes, Ydes, lambda, regularised="none",keepX=NULL,keepY=NULL,H
   #------------------------#
   #--Set Regularisation --#
 
-  Su <- function(v, M, theta.x, ng = 1) M %*% v
-  Sv <- function(u, M, theta.y, ng = 1) t(M) %*% u
+  Su <- function(v, M, lambda, ng = 1) M %*% v
+  Sv <- function(u, M, lambda, ng = 1) t(M) %*% u
 
   if(regularised=="sparse")
     {
+    #--- sparsity in terms of variables selected  ---#
+    sparsity.x <- get_sparsity(keepX, ncol(X), H)
+    sparsity.y <- get_sparsity(keepY, ncol(Y), H)
 
-    sparsity.x <- ncol(X)-keepX
-    sparsity.y <- ncol(Y)-keepY
-
-    #--- sPLS  ---#
+    #--- sPLS sparsifier ---#
     Su <- function(v, M, lambda, ng = 1) soft.thresholding(M %*% v, lambda)
     Sv <- function(u, M, lambda, ng = 1) soft.thresholding(t(M) %*% u, lambda)
 
@@ -109,17 +109,12 @@ algo1 <- function(Xdes, Ydes, lambda, regularised="none",keepX=NULL,keepY=NULL,H
 
   if (regularised=="group")
     {
-    sparsity.x <- length(ind.block.x)+1-keepX
 
-    if(is.null(ind.block.y))
-      {
-      sparsity.y <- rep(0,H)
-      } else {
-        if (is.null(keepY)) keepY <- rep(length(ind.block.y)+1,H)
-        sparsity.y <- length(ind.block.y)+1-keepY
-      }
+    #--- sparsity in terms of groups selected  ---#
+    sparsity.x <- get_sparsity(keepX, length(ind.block.x)+1, H)
+    sparsity.y <- get_sparsity(keepY, length(ind.block.y)+1, H)
 
-    #--- gPLS  ---#
+    #--- gPLS sparsifier ---#
     Su <- function(v, M, lambda, ng = 1) {
       x <- M %*% v
       soft.thresholding.group(x,ind.block.x, lambda)
@@ -130,33 +125,27 @@ algo1 <- function(Xdes, Ydes, lambda, regularised="none",keepX=NULL,keepY=NULL,H
     }
   }
 
+  #--- *** sgPLS penalty under development ***  ---#
+
   if (regularised=="sparse group")
   {
-    sparsity.x <- length(ind.block.x)+1-keepX
+    #--- sparsity in terms of groups selected  ---#
+    sparsity.x <- get_sparsity(keepX, length(ind.block.x)+1, H)
+    sparsity.y <- get_sparsity(keepY, length(ind.block.y)+1, H)
 
-    if(is.null(ind.block.y))
-    {
-      sparsity.y <- rep(0,H)
-    } else {
-      if (is.null(keepY)) keepY <- rep(length(ind.block.y)+1,H)
-      sparsity.y <- length(ind.block.y)+1-keepY
-    }
-
-    #--- sgPLS  ---#
+    #--- sgPLS sparsifier ---#
     Su <- function(v, M, lambda, ng = 1) {
       x <- M %*% v
-
-      #--- *** Need to fix penalty ***  ---#
       soft.thresholding.sparse.group(x, ind.block.x, lambda, alpha = alpha.x)
     }
     Sv <- function(u, M, lambda, ng = 1) {
       x <- t(M) %*% u
-      #--- *** Need to fix penalty ***  ---#
       soft.thresholding.sparse.group(x, ind.block.y, lambda, alpha = alpha.y)
     }
   }
 
-  #--- Register parameters  ---#
+
+  #--- set data parameters  ---#
   n <- nrow(X); p <- ncol(X); q <- ncol(Y)
 
   xiH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
@@ -276,6 +265,7 @@ algo1 <- function(Xdes, Ydes, lambda, regularised="none",keepX=NULL,keepY=NULL,H
     if ( case %in% 2 ) ehm1T <- t(omegah) %*% Y[,] / my.norm2(omegah) ## row 34
 
     if ( case %in% 4 ) dhm1T <- t(xih) %*% Y[,] / my.norm2(xih) ## row 35
+
 
     #-- Deflate the matrices --#
 
