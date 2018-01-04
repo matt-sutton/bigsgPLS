@@ -83,12 +83,11 @@ algo1 <- function(Xdes, Ydes, lambda, regularised="none",keepX=NULL,keepY=NULL,H
 
   #-- Check data --#
   if (!(case %in% 1:4)) stop("'case' should be equal to 1, 2, 3 or 4.")
-  if (!is.matrix(X)) stop("'X' should be a matrix.")
-  if (!is.matrix(Y)) stop("'Y' should be a matrix.")
 
   Unew <- Vnew <- NULL
   X <- attach.big.matrix(Xdes)
   Y <- attach.big.matrix(Ydes)
+
 
   #------------------------#
   #--Set Regularisation --#
@@ -103,55 +102,80 @@ algo1 <- function(Xdes, Ydes, lambda, regularised="none",keepX=NULL,keepY=NULL,H
     sparsity.y <- ncol(Y)-keepY
 
     #--- sPLS  ---#
-    Su <- function(v, M, theta.x, ng = 1) gsoft(M %*% v, theta.x[1])
-    Sv <- function(u, M, theta.y, ng = 1) Su(u, t(M), theta.y[1], ng)
+    Su <- function(v, M, lambda, ng = 1) soft.thresholding(M %*% v, lambda)
+    Sv <- function(u, M, lambda, ng = 1) soft.thresholding(t(M) %*% u, lambda)
 
-    } else if (regularised=="group")
+  }
+
+  if (regularised=="group")
+    {
+    sparsity.x <- length(ind.block.x)+1-keepX
+
+    if(is.null(ind.block.y))
       {
-      sparsity.x <- length(ind.block.x)+1-keepX
+      sparsity.y <- rep(0,H)
+      } else {
+        if (is.null(keepY)) keepY <- rep(length(ind.block.y)+1,H)
+        sparsity.y <- length(ind.block.y)+1-keepY
+      }
 
-      if(is.null(ind.block.y))
-        {
-        sparsity.y <- rep(0,H)
-        } else {
-          if (is.null(keepY)) keepY <- rep(length(ind.block.y)+1,H)
-          sparsity.y <- length(ind.block.y)+1-keepY
-        }
-      #--- gPLS  ---#
-      Su <- function(v, M, theta.x, ng = 1) {
-        K <- length(theta.x) - 1
-        lambda.x <- theta.x[1]
-        p.vec <- theta.x[-1]
-        res <- NULL
-        indices <- c(0, cumsum(p.vec))
-        for (k in 1:K) {
-          tmp <- (crossprod.chunk(X[, (indices[k] + 1):(indices[k + 1])], Y, ng)) %*% v
-          res <- cbind(res, plus.function(1.0 - 0.5 * lambda.x * sqrt(p.vec[k]) / my.norm(tmp)) * tmp)
-        }
-        return(res)
-      }
-      Sv <- function(u, M, theta.y, ng = 1) {
-        return(Su(u, t(M), theta.y, ng = ng))
-      }
+    #--- gPLS  ---#
+    Su <- function(v, M, lambda, ng = 1) {
+      x <- M %*% v
+      soft.thresholding.group(x,ind.block.x, lambda)
+    }
+    Sv <- function(u, M, lambda, ng = 1) {
+      x <- t(M) %*% u
+      soft.thresholding.group(x,ind.block.y, lambda)
+    }
+  }
+
+  if (regularised=="sparse group")
+  {
+    sparsity.x <- length(ind.block.x)+1-keepX
+
+    if(is.null(ind.block.y))
+    {
+      sparsity.y <- rep(0,H)
+    } else {
+      if (is.null(keepY)) keepY <- rep(length(ind.block.y)+1,H)
+      sparsity.y <- length(ind.block.y)+1-keepY
     }
 
+    #--- sgPLS  ---#
+    Su <- function(v, M, lambda, ng = 1) {
+      x <- M %*% v
+
+      #--- *** Need to fix penalty ***  ---#
+      soft.thresholding.sparse.group(x, ind.block.x, lambda, alpha = alpha.x)
+    }
+    Sv <- function(u, M, lambda, ng = 1) {
+      x <- t(M) %*% u
+      #--- *** Need to fix penalty ***  ---#
+      soft.thresholding.sparse.group(x, ind.block.y, lambda, alpha = alpha.y)
+    }
+  }
+
+  #--- Register parameters  ---#
   n <- nrow(X); p <- ncol(X); q <- ncol(Y)
+
   xiH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                backingfile="xi.bin",
                                descriptorfile="xi.desc")
+
   if ((case == 2) || (case == 4)) {
     omegaH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                     backingfile="omega.bin",
                                     descriptorfile="omega.desc")
   }
 
-  #-- compute large cross product (cross product chunk)--#
+  #-- Compute large cross product (cross product chunk)--#
   M0 <- cpc(Xdes, Ydes, ng) / (n - 1);
 
   if (case == 3) {
-    ##computation of A and B ## rows 2
+    ##Computation of A and B ## rows 2
 
-    #-- check this with other algorithm... ---#
+    #-- ***** Fix this later ***** ---#
 
     N0y <- cpc(Ydes, Ydes, ng)
     A <- sqrtm(N0+lambda)
@@ -159,195 +183,143 @@ algo1 <- function(Xdes, Ydes, lambda, regularised="none",keepX=NULL,keepY=NULL,H
     M0 <- A%*%M0%*%B
   }
 
+  #-- Initialise the h - 1 vectors --#
+  uhm1 <- matrix(0.0, nrow = p); vhm1 <- matrix(0.0, nrow = q)
+  chm1T <- t(uhm1);  ehm1T <- t(vhm1);
+  P <- Ip <- diag(1, nrow = p, ncol = p); Q <- Iq <- diag(1, nrow = q, ncol = q);
+
   for (h in 1:H) {
     tmp <- svd(M0, nu = 1, nv = 1)
 
-    if (remove.sign.ind) {  # so as to make the singular vectors unique (not necessary but remove sign indeterminacy)
-      i <- which.max(abs(tmp$u))
-      if (tmp$u[i] <= 0) {
-        tmp$u <- -tmp$u
-        tmp$v <- -tmp$v
-      }
+    #-- remove sign indeterminacy --#
+    i <- which.max(abs(tmp$u))
+    if (tmp$u[i] <= 0) {
+      tmp$u <- -tmp$u
+      tmp$v <- -tmp$v
     }
 
-    if (case == 3) { ### rows 14
-      tmp$u <- A%*% tmp$u
-      tmp$v <- B%*% tmp$uv
-    }
-
-    uold <- tmp$u
-    vold <- tmp$v
-    unew <- 0.0
+    uh <- tmp$u
+    vh <- tmp$v
     uprevious <- 0
-    while ((my.norm(uold - uprevious) > epsilon)) {
 
-      if(regularised=="sparse"){
-        if(sparsity.x[h]==0) {lambda.x <- 0} else{
-          lambda.x <- sort(abs(M0%*%matrix(vold,ncol=1)))[sparsity.x[h]]}
-        unew <- soft.thresholding(M0%*%matrix(vold,ncol=1),lambda=lambda.x)
-        unew <- unew/sqrt(sum(unew**2))
-        ### Need to check it I put unew but  in algorithm is is uold
-        if(sparsity.y[h]==0) lambda.y <- 0 else lambda.y <- sort(abs(t(M0)%*%matrix(unew,ncol=1)))[sparsity.y[h]]
-        vnew <- soft.thresholding(t(M0)%*%matrix(unew,ncol=1),lambda=lambda.y)
-        vnew <- vnew/sqrt(sum(vnew**2))
-        uprevious <- uold
-        vprevious <- vold
-        uold <- unew
-        vold <- vnew
-      }else if (regularised=="group"){
-        vecZV <- M0%*%matrix(vold,ncol=1)
-        tab.ind <- c(0,ind.block.x,length(vecZV))
-        res <- NULL
-        for (i in 1:(length(ind.block.x)+1)){
-          ji <- tab.ind[i+1]-tab.ind[i]
-          vecx <- vecZV[((tab.ind[i]+1):tab.ind[i+1])]
-          res <- c(res,2*normv(vecx)/sqrt(ji))
-        }
-        if(sparsity.x[h]==0) lambda.x <- 0 else{
-          lambda.x <- sort(res)[sparsity.x[h]]}
+    #-- Sparsifying loop for weight vectors --#
+    if( (sparsity.x[h] > 0) || (sparsity.y[h] > 0) )
+    {
+      while ((my.norm(uh - uprevious) > epsilon)) {
 
-        unew <- soft.thresholding.group(M0%*%matrix(vold,ncol=1),ind=ind.block.x,lambda=lambda.x)
-        unew <- unew/sqrt(sum(unew**2))
+        uprevious <- uh
 
-        if(sparsity.y[h]==0) {lambda.y <- 0} else {
-          vecZV <- t(M0)%*%matrix(unew,ncol=1)
-          tab.ind <- c(0,ind.block.y,length(vecZV))
-          res <- NULL
-          for (i in 1:(length(ind.block.y)+1)){
-            ji <- tab.ind[i+1]-tab.ind[i]
-            vecx <- vecZV[((tab.ind[i]+1):tab.ind[i+1])]
-            res <- c(res,2*normv(vecx)/sqrt(ji))
-          }
-          lambda.y <- sort(res)[sparsity.y[h]]}
-        if(sparsity.y[h]==0) {vnew <- t(M0)%*%matrix(unew,ncol=1)} else {
-          vnew <- soft.thresholding.group(t(M0)%*%matrix(unew,ncol=1),ind=ind.block.y,lambda=lambda.y)}
-        vnew <- vnew/sqrt(sum(vnew**2))
-        uprevious <- uold
-        vprevious <- vold
-        uold <- unew
-        vold <- vnew
-      }else{
-        unew <- M0 %*% as.matrix(vold)
-        unew <- unew / my.norm(unew)
-        if (case == 3) {
-          unew <-  A%*%unew
-        }
-        vnew <- t(M0) %*% as.matrix(uold)
-        vnew <- vnew / my.norm(vnew)
-        if (case == 3) {
-          vnew <-  B%*%vnew
-        }
-        uprevious <- uold
-        vprevious <- vold
-        uold <- unew
-        vold <- vnew
+        lambda.x <- get_lambda(sparsity.x[h], ind.block.x, M0 %*% vh, 0)
+        uh <- Su(vh, M0, lambda.x, ng) ; uh <- normalize(uh)       ## row 11
+
+        lambda.y <- get_lambda(sparsity.y[h], ind.block.y, t(M0) %*% uh, 0)
+        vh <- Sv(uh, M0, lambda.y, ng) ; vh <- normalize(vh)       ## row 12
       }
     }
-    if ((case ==2) || (case == 4)) {### row 26 ,
-      # xih = X * unew
-      xides <- describe(xiH)
-      foreach(g = 1:ng) %dopar% {
-        require("bigmemory")
-        xiH <- attach.big.matrix(xides)
-        X <- attach.big.matrix(Xdes)
-        size.chunk <- nrow(xiH) / ng
-        rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-        xiH[rows, h] <- X[rows,] %*% as.matrix(unew)
-      }
-    } else { ### row 29 I think no need this extra else
-      # xih = X * unew
-      xides <- describe(xiH)
-      foreach(g = 1:ng) %dopar% {
-        require("bigmemory")
-        xiH <- attach.big.matrix(xides)
-        X <- attach.big.matrix(Xdes)
-        size.chunk <- nrow(xiH) / ng
-        rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-        xiH[rows, h] <- X[rows,] %*% as.matrix(unew)
-      }
+
+    #-- Compute the PLS scores --#
+
+    xides <- describe(xiH)
+    foreach(g = 1:ng) %dopar% {
+      require("bigmemory")
+      xiH <- attach.big.matrix(xides)
+      X <- attach.big.matrix(Xdes)
+      size.chunk <- nrow(xiH) / ng
+      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+      xiH[rows, h] <- X[rows,] %*% as.matrix(uh)
     }
-    if ((case == 2) || (case == 4)) { ### rows 27
-      omegades <- describe(omegaH)
+    xih <- xiH[, h]
+
+    omegades <- describe(omegaH)
+    foreach(g = 1:ng) %dopar% {
+      require("bigmemory")
+      omegaH <- attach.big.matrix(omegades)
+      Y <- attach.big.matrix(Ydes)
+      size.chunk <- nrow(omegaH) / ng
+      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+      omegaH[rows, h] <- Y[rows,] %*% as.matrix(vh)
+    }
+    omegah <- omegaH[, h]
+
+
+    #-- Compute the PLS adjusted weights --#
+
+    if ( case %in% 1 ) { ## row 16
+      wh <- uh ; zh <- vh ## row 17
+    } ## row 18
+
+    if ( case %in% 2 ) { ## row 19
+      P <- P %*% (Ip - uhm1 %*% chm1T)  ## row 20
+      Q <- Q %*% (Iq - vhm1 %*% ehm1T)  ## row 21
+      wh <- P %*% uh ; zh <- Q %*% vh ## row 22
+    } ## row 23
+
+    if ( case %in% 3 ) {
+      wh <- A %*% uh ; zh <- B %*% vh
+      } ## row 24
+
+    if ( case %in% 4 ) { ## row 25
+      P <- P %*% (Ip - uhm1 %*% chm1T)  ## row 26
+      wh <- P %*% uh  ## row 27
+      zh <- vh  ## row 28
+    } ## row 29
+
+
+    #-- Compute the PLS loadings --#
+
+    if ( case %in% c(1, 3) ) { ## row 30
+      chm1T <- t(uh) ; ehm1T <- t(vh)  ## row 31
+    } ## row 32
+
+    if ( case %in% c(2, 4) )  chm1T <- t(xih) %*% X[,] / my.norm2(xih) ## row 33
+
+    if ( case %in% 2 ) ehm1T <- t(omegah) %*% Y[,] / my.norm2(omegah) ## row 34
+
+    if ( case %in% 4 ) dhm1T <- t(xih) %*% Y[,] / my.norm2(xih) ## row 35
+
+    #-- Deflate the matrices --#
+
+    proj <- Ip - uh %*% chm1T
+
+    foreach(g = 1:ng, .combine = "+") %dopar% {
+      X <- attach.big.matrix(Xdes)
+      size.chunk <- nrow(X) / ng
+      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+      X[rows,] <- X[rows,] %*% proj
+    }
+
+    if ( case %in% 4 ) { ## row 37
+
       foreach(g = 1:ng) %dopar% {
-        require("bigmemory")
-        omegaH <- attach.big.matrix(omegades)
         Y <- attach.big.matrix(Ydes)
-        size.chunk <- nrow(omegaH) / ng
+        X <- attach.big.matrix(Xdes)
+        size.chunk <- nrow(Y) / ng
         rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-        omegaH[rows, h] <- Y[rows,] %*% as.matrix(vnew)
+        Y[rows,] <- Y[rows,] - X[rows,] %*% uh %*% dhm1T
       }
-    }else{ ### rows 30
-      omegades <- describe(omegaH)
-      foreach(g = 1:ng) %dopar% {
-        require("bigmemory")
-        omegaH <- attach.big.matrix(omegades)
+
+      #Y <- Y[,] - xih %*% dhm1T ## row 38
+      #DH[,h] <- drop(d0T) ## (row 43)
+
+    } else { ## row 39
+
+      proj <- Iq - vh %*% ehm1T
+
+      foreach(g = 1:ng, .combine = "+") %dopar% {
         Y <- attach.big.matrix(Ydes)
-        size.chunk <- nrow(omegaH) / ng
+        size.chunk <- nrow(Y) / ng
         rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-        omegaH[rows, h] <- Y[rows,] %*% as.matrix(vnew)
+        Y[rows,] <- Y[rows,] %*% proj
       }
-    }
+      #EH[,h] <- drop(e0T) ## (row 43)
 
-    if(h < H){
+      } ## row 41
 
-      if (case == 2) { ###row 33
-        tmp <- cpc(Ydes, Ydes, ng)
-        eh <- tmp %*% as.matrix(vnew) / as.vector(t(as.matrix(vnew)) %*% tmp %*% as.matrix(vnew))
-      }
-      if (case == 4) { ### related to rows 34
-        tmpYX <- cpc(Ydes, Xdes, ng)
-        tmpXX <- cpc(Xdes, Xdes, ng)
-        tmpXY <- cpc(Xdes, Ydes, ng)
-        uuT <- as.matrix(unew) %*% t(as.matrix(unew))
-        tmp3 <- uuT %*% tmpXY
-        #  dh <- tmpYX %*% as.matrix(unew) / as.vector(t(as.matrix(unew)) %*% tmpXX %*% as.matrix(unew))
-        tmp4 <- as.vector(t(as.matrix(unew)) %*% tmpXX %*% as.matrix(unew))
-      }
+    M0 <- cpc(Xdes, Ydes, ng)
 
-      if (case == 2) { ### rows 45
-        # Yh = Yhm1 (Ip - vnew * eht)
-        tmp <- diag(rep(1.0, length(vnew))) - as.matrix(vnew) %*% t(eh)
-        foreach(g = 1:ng) %dopar% {
-          require("bigmemory")
-          Y <- attach.big.matrix(Ydes)
-          size.chunk <- nrow(Y) / ng
-          rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-          Y[rows,] <- Y[rows,] %*% tmp
-        }
-      }
-      if (case == 4) { ### rows 46
-        foreach(g = 1:ng) %dopar% {
-          require("bigmemory")
-          Y <- attach.big.matrix(Ydes)
-          X <- attach.big.matrix(Xdes)
-          size.chunk <- nrow(Y) / ng
-          rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-          Y[rows,] <- Y[rows,] - X[rows,] %*% tmp3 / tmp4
-        }
-
-      }
-
-      if ((case == 2) || (case == 4)) { ### rows 44
-        tmp <- cpc(Xdes, Xdes, ng)
-        ch <- tmp %*% as.matrix(unew) / as.vector(t(as.matrix(unew)) %*% tmp %*% as.matrix(unew))
-        # Xh = Xhm1 (Ip - unew * cht)
-        tmp <- diag(rep(1.0, length(unew))) - as.matrix(unew) %*% t(ch)
-        foreach(g = 1:ng) %dopar% {
-          require("bigmemory")
-          X <- attach.big.matrix(Xdes)
-          size.chunk <- nrow(X) / ng
-          rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-          X[rows,] <- X[rows,] %*% tmp
-        }
-      }
-
-      if ((case == 2) || (case == 4)) {
-        M0 <- cpc(Xdes, Ydes, ng)
-      }
-    }
-    Unew <- cbind(Unew,unew)
-    Vnew <- cbind(Vnew,vnew)
+    Unew <- cbind(Unew,uh)
+    Vnew <- cbind(Vnew,vh)
   }
 
-  return(list(loadings= list(X = Unew,Y = Vnew),xides=xides,omegades=omegades,ncomp=H))
+  return(list(loadings = list(X = Unew,Y = Vnew),xides=xides,omegades=omegades,ncomp=H))
 }

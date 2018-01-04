@@ -5,16 +5,16 @@ readchunk <- function(X, g, size.chunk) {
   chunk <- X[rows,]
 }
 
-cpc <- function(Xdes, Ydes, ng = 1) {
+cpc <- function(X, Y, ng = 1) {
 
   readchunk <- function(X, g, size.chunk) {
     rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
     chunk <- X[rows,]
   }
+
   res <- foreach(g = 1:ng, .combine = "+") %dopar% {
-    require("bigmemory")
-    X <- attach.big.matrix(Xdes)
-    Y <- attach.big.matrix(Ydes)
+    if(class(X) == "big.matrix.descriptor") X <- attach.big.matrix(X)
+    if(class(Y) == "big.matrix.descriptor") Y <- attach.big.matrix(Y)
     size.chunk <- nrow(X) / ng
     chunk.X <- readchunk(X, g, size.chunk)
     chunk.Y <- readchunk(Y, g, size.chunk)
@@ -22,7 +22,6 @@ cpc <- function(Xdes, Ydes, ng = 1) {
   }
   return(res)
 }
-
 
 bigscale <- function(Xdes, ng = 1) {
   readchunk <- function(X, g, size.chunk) {
