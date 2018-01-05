@@ -7,7 +7,7 @@ Big Group PLS Discriminant Analysis
 
 The code below replicates the discrimination analysis example.
 
-*See Also* [Example 1](Examples/Example-1-gPLS.md)
+*See Also* [Example 1](Example-1-gPLS.md)
 
 ```R
 library(bigsgPLS)

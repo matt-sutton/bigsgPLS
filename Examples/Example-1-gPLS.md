@@ -8,7 +8,7 @@ Big Group PLS (Test and Example)
 The code below checks the method returns the same results for gPLS (using the sgPLS package).
 The method is then applied to a large dataset (as used in the submitted article).
 
-*See Also* [Example 2](Examples/Example-2-gPLS-DA.md)
+*See Also* [Example 2](Example-2-gPLS-DA.md)
 
 ```R
 #--- Create some example data ---#
