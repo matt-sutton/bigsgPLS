@@ -72,7 +72,7 @@
 #'
 #'
 
-algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
+algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha.x = 0, alpha.y = 0,
                   case = 2, epsilon = 10 ^ -6, ng = 1, ind.block.x=NULL, ind.block.y=NULL) {
 
   #-- readchunk internal funciton --#

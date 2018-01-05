@@ -16,3 +16,7 @@ vignettes/*.pdf
 .httr-oauth
 
 data/*.*
+
+# Accidental Big Data Objects
+*.desc
+*.bin
