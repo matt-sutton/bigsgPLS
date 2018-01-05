@@ -33,21 +33,25 @@ soft.thresholding.group <- function(x,ind,lambda){
   return(res)
 }
 
-soft.thresholding.sparse.group <- function(x,ind,lambda,alpha,ind.block.zero){
+soft.thresholding.sparse.group <- function(x,ind,lambda,alpha){
   tab.ind <- c(0,ind,length(x))
   res <- NULL
+
   for (i in 1:(length(ind)+1)){
     ji <- tab.ind[i+1]-tab.ind[i]
     vecx <- x[((tab.ind[i]+1):tab.ind[i+1])]
-    if(i%in%ind.block.zero) {vecx <- rep(0,ji)} else{
-      temp <- soft.thresholding(vecx,lambda*alpha/2)
-      vecx <- 0.5*temp*(1-lambda*(1-alpha)*sqrt(length(vecx))/sqrt(sum(temp**2)))
+    temp <- soft.thresholding(vecx,lambda*alpha/2)
+
+    if(my.norm(temp) <= lambda*(1-alpha)*sqrt(ji)) {
+      vecx <- rep(0,ji)
+      } else{
+
+      vecx <- 0.5*temp*(1-lambda*(1-alpha)*sqrt(length(vecx))/my.norm(temp))
     }
     res <- c(res,vecx)
   }
   return(res)
 }
-
 
 get_sparsity<- function(keep, maxKeep, ncomp){
 
@@ -56,12 +60,13 @@ get_sparsity<- function(keep, maxKeep, ncomp){
 
   sparsity <- maxKeep - keep
 
+  #-- if no sparsity specified --#
   if(length(sparsity) == 0)
     {
-    #-- if no sparsity specified --#
     return(rep(0, ncomp))
   }
 
+  #-- if sparsity mis-specified --#
   if(length(sparsity) < ncomp)
   {
     if(length(sparsity) != 1){
@@ -105,7 +110,23 @@ get_lambda<- function(sparsity, ind, x, alpha){
   #-- sparse group PLS --#
   if( !is.null(ind) && alpha > 0 )
   {
-    #--- ** TO DO ** ----#
+    #-- internal function (used to set groups to 0 in sgPLS) --#
+    lambda_sg_S <- function(lambda, Mv, alpha){
+      return(sum(soft.thresholding(Mv,lambda*alpha/2)**2)-length(Mv)*((1-alpha)*Mv)**2)
+    }
+
+    #-- Find lambda needed for required groups --#
+    res <- NULL
+    tab.ind <- c(0, ind, length(x))
+    for (i in 1:(length(ind)+1)){
+      ji <- tab.ind[i+1]-tab.ind[i]
+      vecx <- x[((tab.ind[i]+1):tab.ind[i+1])]
+      upperlim <- 2*my.norm(vecx)
+
+      res <- c(res,uniroot(lambda_sg_S, lower = 0, upper = upperlim, Mv = vecx, alpha = alpha))
+    }
+    lambda <- sort(res)[sparsity]
+    return(lambda)
   }
 
 }
