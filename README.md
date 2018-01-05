@@ -1,7 +1,7 @@
 Big sgPLS
 =========================
 
-`bigsgPLS` is an R package that provides an implementation of the two block PLS methods. A preliminary paper has been submitted describing the algorithm and will be made available when the manuscript is accepted. dwhdkh
+`bigsgPLS` is an R package that provides an implementation of the two block PLS methods. A preliminary paper has been submitted describing the algorithm and will be made avaliable when the manuscript is accepted.
 
 Installation
 ------------
