@@ -20,3 +20,7 @@ data/*.*
 # Accidental Big Data Objects
 *.desc
 *.bin
+*.csv
+
+.DS_Store
+.DS_Store?

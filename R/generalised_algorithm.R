@@ -280,12 +280,12 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
 
     if ( case %in% 4 ) { ## row 37
 
-      foreach(g = 1:ng) %dopar% {
+      foreach(g = 1:ng, .combine = "+") %dopar% {
         Y <- attach.big.matrix(Ydes)
         X <- attach.big.matrix(Xdes)
         size.chunk <- nrow(Y) / ng
         rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-        Y[rows,] <- Y[rows,] - X[rows,] %*% uh %*% dhm1T
+        Y[rows,] <- Y[rows,] - xih[rows] %*% dhm1T
       }
 
       #Y <- Y[,] - xih %*% dhm1T ## row 38
