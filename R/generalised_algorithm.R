@@ -132,7 +132,7 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
     }
   }
 
-  #--- *** sgPLS penalty under development ***  ---#
+  #--- sgPLS sparsifier ---#
 
   if (regularised=="sparse group")
   {
@@ -140,7 +140,6 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
     sparsity.x <- get_sparsity(keepX, length(ind.block.x)+1, H)
     sparsity.y <- get_sparsity(keepY, length(ind.block.y)+1, H)
 
-    #--- sgPLS sparsifier ---#
     Su <- function(v, M, lambda, ng = 1) {
       x <- M %*% v
       soft.thresholding.sparse.group(x, ind.block.x, lambda, alpha = alpha.x)
@@ -187,7 +186,7 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
   P <- Ip <- diag(1, nrow = p, ncol = p); Q <- Iq <- diag(1, nrow = q, ncol = q);
 
   for (h in 1:H) {
-    tmp <- svd(M0, nu = 1, nv = 1)
+    tmp <- big_svd(M0, nu = 1, nv = 1)
 
     #-- remove sign indeterminacy --#
     i <- which.max(abs(tmp$u))
@@ -249,11 +248,11 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
       chm1T <- t(uh) ; ehm1T <- t(vh)  ## row 31
     } ## row 32
 
-    if ( case %in% c(2, 4) )  chm1T <- t(xih) %*% X[,] / my.norm2(xih) ## row 33
+    if ( case %in% c(2, 4) )  chm1T <- cpc( xih, Xdes, ng) / my.norm2(xih) ## row 33
 
-    if ( case %in% 2 ) ehm1T <- t(omegah) %*% Y[,] / my.norm2(omegah) ## row 34
+    if ( case %in% 2 ) ehm1T <- cpc(omegah, Ydes) / my.norm2(omegah) ## row 34
 
-    if ( case %in% 4 ) dhm1T <- t(xih) %*% Y[,] / my.norm2(xih) ## row 35
+    if ( case %in% 4 ) dhm1T <- cpc(xih, Ydes) / my.norm2(xih) ## row 35
 
 
     #-- Deflate the matrices --#

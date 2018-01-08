@@ -5,6 +5,12 @@ readchunk <- function(X, g, size.chunk) {
   chunk <- X[rows,]
 }
 
+
+#--     cross product chunk function    --#
+#
+# Return the cross product of  X : n x p   Y: n x q
+# fast for large n  (p, q << n)
+#
 cpc <- function(X, Y, ng = 1) {
 
   res <- foreach(g = 1:ng, .combine = "+") %dopar% {
@@ -19,7 +25,11 @@ cpc <- function(X, Y, ng = 1) {
 }
 
 
-#-- big product --#
+#--     product chunk function    --#
+#
+# Return the matrix product of  mat :n x p  weight: p x r
+# fast for large n  (p, r << n)
+#
 prodchunk <- function(des_mat, weight, ng) {
 
   mat <- attach.big.matrix(des_mat)
