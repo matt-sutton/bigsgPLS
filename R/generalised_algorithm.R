@@ -75,10 +75,18 @@
 algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha.x = 0, alpha.y = 0,
                   case = 2, epsilon = 10 ^ -6, ng = 1, ind.block.x=NULL, ind.block.y=NULL) {
 
-  #-- readchunk internal funciton --#
-  readchunk <- function(X, g, size.chunk) {
-    rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-    chunk <- X[rows,]
+  #-- Internal big data function for deflating  --#
+  deflate <- function(des_mat, score, loading, ng) {
+
+    mat <- attach.big.matrix(des_mat)
+    n <- nrow(mat)
+    size.chunk <- n / ng
+
+    foreach(g = 1:ng) %dopar% {
+      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+      mat[rows,] <- mat[rows,] - score[rows]%*%loading
+    }
+    return()
   }
 
   #-- Check data --#
@@ -87,7 +95,6 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
   Unew <- Vnew <- NULL
   X <- attach.big.matrix(Xdes)
   Y <- attach.big.matrix(Ydes)
-
 
   #------------------------#
   #--Set Regularisation --#
@@ -151,12 +158,14 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
   xiH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                backingfile="xi.bin",
                                descriptorfile="xi.desc")
+  xides <- describe(xiH)
 
   if ((case == 2) || (case == 4)) {
     omegaH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                     backingfile="omega.bin",
                                     descriptorfile="omega.desc")
   }
+  omegades <- describe(omegaH)
 
   #-- Compute large cross product (cross product chunk)--#
   M0 <- cpc(Xdes, Ydes, ng) / (n - 1);
@@ -208,28 +217,8 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
 
     #-- Compute the PLS scores --#
 
-    xides <- describe(xiH)
-    foreach(g = 1:ng) %dopar% {
-      require("bigmemory")
-      xiH <- attach.big.matrix(xides)
-      X <- attach.big.matrix(Xdes)
-      size.chunk <- nrow(xiH) / ng
-      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-      xiH[rows, h] <- X[rows,] %*% as.matrix(uh)
-    }
-    xih <- xiH[, h]
-
-    omegades <- describe(omegaH)
-    foreach(g = 1:ng) %dopar% {
-      require("bigmemory")
-      omegaH <- attach.big.matrix(omegades)
-      Y <- attach.big.matrix(Ydes)
-      size.chunk <- nrow(omegaH) / ng
-      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-      omegaH[rows, h] <- Y[rows,] %*% as.matrix(vh)
-    }
-    omegah <- omegaH[, h]
-
+    xiH[, h] <- xih <- prodchunk(Xdes, uh, ng)
+    omegaH[, h] <- omegah <- prodchunk(Ydes, vh, ng)
 
     #-- Compute the PLS adjusted weights --#
 
@@ -269,39 +258,15 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
 
     #-- Deflate the matrices --#
 
-    proj <- Ip - uh %*% chm1T
-
-    foreach(g = 1:ng, .combine = "+") %dopar% {
-      X <- attach.big.matrix(Xdes)
-      size.chunk <- nrow(X) / ng
-      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-      X[rows,] <- X[rows,] %*% proj
-    }
+    deflate(Xdes, xih, chm1T, ng = ng)
 
     if ( case %in% 4 ) { ## row 37
 
-      foreach(g = 1:ng, .combine = "+") %dopar% {
-        Y <- attach.big.matrix(Ydes)
-        X <- attach.big.matrix(Xdes)
-        size.chunk <- nrow(Y) / ng
-        rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-        Y[rows,] <- Y[rows,] - xih[rows] %*% dhm1T
-      }
-
-      #Y <- Y[,] - xih %*% dhm1T ## row 38
-      #DH[,h] <- drop(d0T) ## (row 43)
+      deflate(Ydes, xih, dhm1T, ng = ng)
 
     } else { ## row 39
 
-      proj <- Iq - vh %*% ehm1T
-
-      foreach(g = 1:ng, .combine = "+") %dopar% {
-        Y <- attach.big.matrix(Ydes)
-        size.chunk <- nrow(Y) / ng
-        rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-        Y[rows,] <- Y[rows,] %*% proj
-      }
-      #EH[,h] <- drop(e0T) ## (row 43)
+      deflate(Ydes, omegah, ehm1T, ng = ng)
 
       } ## row 41
 
