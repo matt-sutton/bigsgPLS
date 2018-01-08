@@ -128,16 +128,16 @@ eps <- 0.2
 x <- 1:p
 X11(type="cairo")
 par(mfrow=c(2,2),mar=c(3,3,1,1)+0.1)
-coef <- (normv(theta.x1))
+norm_const <- sqrt(sum(theta.x1**2))  
 plot(theta.x1~x,ylab=c(""),xlab="",col="blue",ylim=c(-1.5-eps,1.5+eps))
 legend("bottomright",legend="Original value: c1",col="blue",pch=1)
-plot(-coef*model.group.sparse$loadings$X[,1]~x,col="red",ylab=c(""),xlab="",ylim=c(-1.5-eps,1.5+eps))
+plot(-norm_const*model.group.sparse$loadings$X[,1]~x,col="red",ylab=c(""),xlab="",ylim=c(-1.5-eps,1.5+eps))
 legend("bottomright",legend="BIG-gPLS weight: u1",col="red",pch=1)
-coef <- normv(theta.y1)
+norm_const <- sqrt(sum(theta.y1**2))
 y <- 1:q
 plot(theta.y1~y,ylab=c(""),xlab="",col="blue",ylim=c(-1.5-eps,1.5+eps))
 legend("bottomleft",legend="Original value: d1",col="blue",pch=1)
-plot(-coef*model.group.sparse$loadings$Y[,1]~y,col="red",ylab=c(""),xlab="",ylim=c(-1.5-eps,1.5+eps))
+plot(-norm_const*model.group.sparse$loadings$Y[,1]~y,col="red",ylab=c(""),xlab="",ylim=c(-1.5-eps,1.5+eps))
 legend("bottomleft",legend="BIG-gPLS weight: v1",col="red",pch=1)
 
 #--- Method appears to return the same results ---#
@@ -153,8 +153,8 @@ legend("bottomleft",legend="BIG-gPLS weight: v1",col="red",pch=1)
 #--------------------------------#
 
 
-fileX <- "../data/Xda.csv"
-fileY <- "../data/Yda.csv"
+fileX <- "../data/X.csv"
+fileY <- "../data/Y.csv"
 
 create.big.file.model.case1(fileX = fileX, fileY = fileY, size.min=5000000000, p=400, q=500,chunk.size=10000)
 
@@ -166,14 +166,14 @@ cl <- makeCluster(4)
 registerDoSNOW(cl)
 
 #-- Read the X data using bigmemory package --#
-dataX <- read.big.matrix(fileX, header = FALSE, backingfile = "Xda.bin", descriptorfile = "Xda.desc", type = "double")
+dataX <- read.big.matrix(fileX, header = FALSE, backingfile = "X.bin", descriptorfile = "X.desc", type = "double")
 Xdes <- describe(dataX)
 
 #-- Scale the X matrix --#
 bigscale(Xdes, ng = 100)
 
 #-- Read the Y data using bigmemory package --#
-dataY <- read.big.matrix(fileY, header = FALSE, backingfile = "Yda.bin", descriptorfile = "Yda.desc", type = "double")
+dataY <- read.big.matrix(fileY, header = FALSE, backingfile = "Y.bin", descriptorfile = "Y.desc", type = "double")
 Ydes <- describe(dataY)
 
 #-- Scale the Y matrix --#
@@ -203,16 +203,16 @@ eps <- 0.2
 x <- 1:p
 X11(type="cairo")
 par(mfrow=c(2,2),mar=c(3,3,1,1)+0.1)
-coef <- (normv(theta.x1))
+norm_const <- sqrt(sum(theta.x1**2))  
 plot(theta.x1~x,ylab=c(""),xlab="",col="blue",ylim=c(-1.5-eps,1.5+eps))
 legend("bottomright",legend="Original value: c1",col="blue",pch=1)
-plot(-coef*model.group.sparse.big$loadings$X[,1]~x,col="red",ylab=c(""),xlab="",ylim=c(-1.5-eps,1.5+eps))
+plot(-norm_const*model.group.sparse.big$loadings$X[,1]~x,col="red",ylab=c(""),xlab="",ylim=c(-1.5-eps,1.5+eps))
 legend("bottomright",legend="BIG-gPLS weight: u1",col="red",pch=1)
 
-coef <- normv(theta.y1)
+norm_const <- sqrt(sum(theta.y1**2))
 y <- 1:q
 plot(theta.y1~y,ylab=c(""),xlab="",col="blue",ylim=c(-1.5-eps,1.5+eps))
 legend("bottomleft",legend="Original value: d1",col="blue",pch=1)
-plot(-coef*model.group.sparse.big$loadings$Y[,1]~y,col="red",ylab=c(""),xlab="",ylim=c(-1.5-eps,1.5+eps))
+plot(-norm_const*model.group.sparse.big$loadings$Y[,1]~y,col="red",ylab=c(""),xlab="",ylim=c(-1.5-eps,1.5+eps))
 legend("bottomleft",legend="BIG-gPLS weight: v1",col="red",pch=1)
 ```
