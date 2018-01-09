@@ -5,6 +5,16 @@ readchunk <- function(X, g, size.chunk) {
   chunk <- X[rows,]
 }
 
+#-- Parse either matrix or descriptor --#
+parse_mat <- function(X){
+
+  X <- switch(class(X),
+         "big.matrix.descriptor" = bigmemory::attach.big.matrix(X),
+         "matrix" = X,
+         stop("data should be a matrix or big matrix descriptor.")
+  )
+}
+
 
 #--     cross product chunk function    --#
 #
@@ -13,9 +23,10 @@ readchunk <- function(X, g, size.chunk) {
 #
 cpc <- function(X, Y, ng = 1) {
 
+  X <- parse_mat(X)
+  Y <- parse_mat(Y)
+  require(foreach)
   res <- foreach(g = 1:ng, .combine = "+") %dopar% {
-    if(class(X) == "big.matrix.descriptor") X <- bigmemory::attach.big.matrix(X)
-    if(class(Y) == "big.matrix.descriptor") Y <- bigmemory::attach.big.matrix(Y)
     size.chunk <- nrow(X) / ng
     chunk.X <- readchunk(X, g, size.chunk)
     chunk.Y <- readchunk(Y, g, size.chunk)
@@ -32,10 +43,11 @@ cpc <- function(X, Y, ng = 1) {
 #
 prodchunk <- function(des_mat, weight, ng) {
 
-  mat <- attach.big.matrix(des_mat)
+  mat <- parse_mat(des_mat)
   n <- nrow(mat)
   size.chunk <- n / ng
 
+  require(foreach)
   res <- foreach(g = 1:ng, .combine = 'rbind', .inorder = TRUE) %dopar% {
     rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
     mat[rows,]%*%weight
@@ -46,7 +58,7 @@ prodchunk <- function(des_mat, weight, ng) {
 
 bigscale <- function(Xdes, ng = 1) {
 
-  X <- bigmemory::attach.big.matrix(Xdes)
+  X <- parse_mat(Xdes)
   p <- ncol(X)
   n <- nrow(X)
 

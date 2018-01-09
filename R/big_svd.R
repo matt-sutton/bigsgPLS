@@ -1,3 +1,3 @@
-big_svd <- function(M, nu = 1, nv = 1){
+big_svd <- function(M){
   return(svd(M, nu = 1, nv = 1))
 }

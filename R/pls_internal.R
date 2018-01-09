@@ -78,7 +78,6 @@ get_sparsity<- function(keep, maxKeep, ncomp){
   return(sparsity)
 }
 
-
 get_lambda<- function(sparsity, ind, x, alpha){
 
   #-- No Sparsity --#
