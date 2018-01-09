@@ -63,8 +63,8 @@ system.time(
 # 12.644    3.872   67.888 
 
 #-- Return the PLS X and Y scores --#
-xi <- attach.big.matrix(model.group.sparse.da$xides)
-omega <- attach.big.matrix(model.group.sparse.da$omegades)
+xi <- attach.big.matrix(model.group.sparse.da$variates$X)
+omega <- attach.big.matrix(model.group.sparse.da$variates$Y)
 
 #-- Find the selected variables --#
 which(model.group.sparse.da$loadings$X[,1]!=0)
