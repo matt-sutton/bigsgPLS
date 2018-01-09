@@ -72,13 +72,16 @@
 #'
 #'
 
-algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha.x = 0, alpha.y = 0,
+algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha.x = 0, alpha.y = 0,
                   case = 2, epsilon = 10 ^ -6, ng = 1, ind.block.x=NULL, ind.block.y=NULL) {
 
   #-- Internal big data function for deflating  --#
   deflate <- function(des_mat, score, loading, ng) {
 
-    mat <- attach.big.matrix(des_mat)
+    if(class(des_mat) == "matrix"){
+      return(des_mat - score%*%loading)
+    }
+    mat <- parse_mat(des_mat)
     n <- nrow(mat)
     size.chunk <- n / ng
 
@@ -92,9 +95,23 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
   #-- Check data --#
   if (!(case %in% 1:4)) stop("'case' should be equal to 1, 2, 3 or 4.")
 
+  if(n > 10^4 & (class(X) != "big.matrix.descriptor" || class(Y) != "big.matrix.descriptor")){
+    stop("We recommend using bigmemory package for X and Y.")
+  }
+
+  if(class(X) != class(Y)){
+    stop("Use the same class for X and Y")
+  }
+
+  if(class(X) == "big.matrix.descriptor"){
+    n <- X@description$totalRows;   p <- X@description$totalCols;   q <- Y@description$totalCols
+
+    } else {
+    n <- nrow(X); p <- ncol(X); q <- ncol(Y)
+
+    }
+
   Unew <- Vnew <- NULL
-  X <- attach.big.matrix(Xdes)
-  Y <- attach.big.matrix(Ydes)
 
   #------------------------#
   #--Set Regularisation --#
@@ -105,8 +122,8 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
   if(regularised=="sparse")
     {
     #--- sparsity in terms of variables selected  ---#
-    sparsity.x <- get_sparsity(keepX, ncol(X), H)
-    sparsity.y <- get_sparsity(keepY, ncol(Y), H)
+    sparsity.x <- get_sparsity(keepX, p, H)
+    sparsity.y <- get_sparsity(keepY, q, H)
 
     #--- sPLS sparsifier ---#
     Su <- function(v, M, lambda, ng = 1) soft.thresholding(M %*% v, lambda)
@@ -151,8 +168,7 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
   }
 
 
-  #--- set data parameters  ---#
-  n <- nrow(X); p <- ncol(X); q <- ncol(Y)
+  #--- Initalise scores  ---#
 
   xiH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                backingfile="xi.bin",
@@ -167,14 +183,14 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
   omegades <- describe(omegaH)
 
   #-- Compute large cross product (cross product chunk)--#
-  M0 <- cpc(Xdes, Ydes, ng) / (n - 1);
+  M0 <- cpc(X, Y, ng) / (n - 1);
 
   if (case == 3) {
     ##Computation of A and B ## rows 2
 
     #-- ***** Fix this later ***** ---#
 
-    N0y <- cpc(Ydes, Ydes, ng)
+    N0y <- cpc(Y, Y, ng)
     A <- sqrtm(N0+lambda)
     B <- sqrtm(N0y+lambda)
     M0 <- A%*%M0%*%B
@@ -186,7 +202,7 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
   P <- Ip <- diag(1, nrow = p, ncol = p); Q <- Iq <- diag(1, nrow = q, ncol = q);
 
   for (h in 1:H) {
-    tmp <- big_svd(M0, nu = 1, nv = 1)
+    tmp <- big_svd(M0)
 
     #-- remove sign indeterminacy --#
     i <- which.max(abs(tmp$u))
@@ -216,8 +232,8 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
 
     #-- Compute the PLS scores --#
 
-    xiH[, h] <- xih <- prodchunk(Xdes, uh, ng)
-    omegaH[, h] <- omegah <- prodchunk(Ydes, vh, ng)
+    xiH[, h] <- xih <- prodchunk(X, uh, ng)
+    omegaH[, h] <- omegah <- prodchunk(Y, vh, ng)
 
     #-- Compute the PLS adjusted weights --#
 
@@ -248,28 +264,28 @@ algo1 <- function(Xdes, Ydes, regularised="none", keepX=NULL, keepY=NULL, H = 3,
       chm1T <- t(uh) ; ehm1T <- t(vh)  ## row 31
     } ## row 32
 
-    if ( case %in% c(2, 4) )  chm1T <- cpc( xih, Xdes, ng) / my.norm2(xih) ## row 33
+    if ( case %in% c(2, 4) )  chm1T <- cpc( xih, X, ng) / my.norm2(xih) ## row 33
 
-    if ( case %in% 2 ) ehm1T <- cpc(omegah, Ydes) / my.norm2(omegah) ## row 34
+    if ( case %in% 2 ) ehm1T <- cpc(omegah, Y) / my.norm2(omegah) ## row 34
 
-    if ( case %in% 4 ) dhm1T <- cpc(xih, Ydes) / my.norm2(xih) ## row 35
+    if ( case %in% 4 ) dhm1T <- cpc(xih, Y) / my.norm2(xih) ## row 35
 
 
     #-- Deflate the matrices --#
 
-    deflate(Xdes, xih, chm1T, ng = ng)
+    if(class(X) == "matrix") X <- deflate(X, xih, chm1T, ng = ng)  else  deflate(X, xih, chm1T, ng = ng)
 
     if ( case %in% 4 ) { ## row 37
 
-      deflate(Ydes, xih, dhm1T, ng = ng)
+      if(class(Y) == "matrix") Y <- deflate(Y, xih, dhm1T, ng = ng)  else  deflate(Y, xih, dhm1T, ng = ng)
 
     } else { ## row 39
 
-      deflate(Ydes, omegah, ehm1T, ng = ng)
+      if(class(Y) == "matrix") Y <- deflate(Y, omegah, ehm1T, ng = ng)  else  deflate(Y, omegah, ehm1T, ng = ng)
 
       } ## row 41
 
-    M0 <- cpc(Xdes, Ydes, ng)
+    M0 <- cpc(X, Y, ng)
 
     Unew <- cbind(Unew,uh)
     Vnew <- cbind(Vnew,vh)
