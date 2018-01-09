@@ -104,10 +104,10 @@ algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha
   }
 
   if(class(X) == "big.matrix.descriptor"){
-    n <- X@description$totalRows;   p <- X@description$totalCols;   q <- Y@description$totalCols
+    n <- X@description$totalRows;   p <- X@description$totalCols;   q <- Y@description$totalCols; big_matrix <- TRUE
 
     } else {
-    n <- nrow(X); p <- ncol(X); q <- ncol(Y)
+    n <- nrow(X); p <- ncol(X); q <- ncol(Y); big_matrix <- FALSE
 
     }
 
@@ -170,17 +170,22 @@ algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha
 
   #--- Initalise scores  ---#
 
-  xiH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
-                               backingfile="xi.bin",
-                               descriptorfile="xi.desc")
-  xides <- describe(xiH)
+  if(!big_matrix)
+    {
+    xiH <- matrix(nrow = n, ncol = H)
+    omegaH <- matrix(nrow = n, ncol = H)
 
-  if ((case == 2) || (case == 4)) {
+    } else{
+    xiH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
+                                 backingfile="xi.bin",
+                                 descriptorfile="xi.desc")
+    xides <- describe(xiH)
+
     omegaH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                     backingfile="omega.bin",
                                     descriptorfile="omega.desc")
+    omegades <- describe(omegaH)
   }
-  omegades <- describe(omegaH)
 
   #-- Compute large cross product (cross product chunk)--#
   M0 <- cpc(X, Y, ng) / (n - 1);
@@ -291,5 +296,7 @@ algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha
     Vnew <- cbind(Vnew,vh)
   }
 
-  return(list(loadings = list(X = Unew,Y = Vnew),xides=xides,omegades=omegades,ncomp=H))
+  variates <- if(big_matrix) list(X = describe(xiH), Y = describe(omegaH)) else list(X = xiH, Y = omegaH)
+
+  return(list(loadings = list(X = Unew,Y = Vnew),variates = variates,ncomp=H))
 }
