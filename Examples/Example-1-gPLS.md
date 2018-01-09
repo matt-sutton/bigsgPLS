@@ -104,8 +104,8 @@ model.group.sparse <- algo1(Xdes, Ydes, regularised = "group",
 
 
 #---- Compare the scores ---#
-xi <- attach.big.matrix(model.group.sparse$xides)
-omega <- attach.big.matrix(model.group.sparse$omegades)
+xi <- attach.big.matrix(model.group.sparse$variates$X)
+omega <- attach.big.matrix(model.group.sparse$variates$Y)
 
 (comparison.variatesX <- cbind(model.gPLS$variates$X,xi[1:100,]))
 (comparison.variatesY <- cbind(model.gPLS$variates$Y,omega[1:100,]))
