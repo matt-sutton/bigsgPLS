@@ -2,7 +2,7 @@ Package: bigsgPLS
 Type: Package
 Title: Implementation of sgPLS for Big data
 Version: 0.1.0
-Author: Benoit Liquet, 
+Author: Pierre Lafaye De Micheaux, Benoit Liquet, Matthew Sutton
 Maintainer: Matthew Sutton <matt.sutton@qut.edu.au>
 Description: Basic implementation of big data PLS methods
 License: GPL (>= 2.0)
