@@ -14,18 +14,7 @@ Use [devtools](https://github.com/hadley/devtools) to install:
 
 ```R
 library(devtools)
-# install_github("matt-sutton/bigsgPLS")
-
-# -- Private Repo ---#
-#
-# Since the repo is private you need to set up a PAT
-# in order to use the package. It's pretty easy to do.
-# Just go here: https://github.com/settings/tokens
-# After setting up a token, pass this into the install,
-#   e.g. 
-
-install_github("matt-sutton/bigsgPLS", auth_token = "your personal access token")
-
+install_github("bigsgPLS", "matt-sutton")
 ```
 
 Example Usage
