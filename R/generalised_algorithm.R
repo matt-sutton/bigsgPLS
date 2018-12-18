@@ -72,8 +72,20 @@
 #'
 #'
 
-algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha.x = 0, alpha.y = 0,
-                  case = 2, epsilon = 10 ^ -6, ng = 1, ind.block.x=NULL, ind.block.y=NULL) {
+algo1 <- function(X,
+                  Y,
+                  regularised="none",
+                  keepX=NULL,
+                  keepY=NULL,
+                  H = 3,
+                  alpha.x = 0,
+                  alpha.y = 0,
+                  case = 2,
+                  epsilon = 10 ^ -6,
+                  ng = 1,
+                  ind.block.x=NULL,
+                  ind.block.y=NULL,
+                  scale =TRUE) {
 
   #-- Internal big data function for deflating  --#
   deflate <- function(des_mat, score, loading, ng) {
@@ -92,6 +104,14 @@ algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha
     return()
   }
 
+  if(class(X) == "big.matrix.descriptor"){
+    n <- X@description$totalRows;   p <- X@description$totalCols;   q <- Y@description$totalCols; big_matrix <- TRUE
+
+  }
+  else {
+    n <- nrow(X); p <- ncol(X); q <- ncol(Y); big_matrix <- FALSE
+  }
+
   #-- Check data --#
   if (!(case %in% 1:4)) stop("'case' should be equal to 1, 2, 3 or 4.")
 
@@ -103,21 +123,25 @@ algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha
     stop("Use the same class for X and Y")
   }
 
-  if(class(X) == "big.matrix.descriptor"){
-    n <- X@description$totalRows;   p <- X@description$totalCols;   q <- Y@description$totalCols; big_matrix <- TRUE
-
-    } else {
-    n <- nrow(X); p <- ncol(X); q <- ncol(Y); big_matrix <- FALSE
-
-    }
-
   Unew <- Vnew <- NULL
+
+  #-- Scale data if required --#
+  if(class(X) != "big.matrix.descriptor"){
+    X <- scale(X)
+    X[is.nan(X)] <- 0
+    Y <- scale(Y)
+  } else{
+    bigscale(X, ng = 1)
+    bigscale(Y, ng = 1)
+  }
+  #bigscale(Y, ng = 100)
 
   #------------------------#
   #--Set Regularisation --#
 
   Su <- function(v, M, lambda, ng = 1) M %*% v
   Sv <- function(u, M, lambda, ng = 1) t(M) %*% u
+
 
   if(regularised=="sparse")
     {
@@ -221,17 +245,19 @@ algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha
     uprevious <- 0
 
     #-- Sparsifying loop for weight vectors --#
-    if( (sparsity.x[h] > 0) || (sparsity.y[h] > 0) )
-    {
-      while ((my.norm(uh - uprevious) > epsilon)) {
+    if(regularised != "none"){
+      if( (sparsity.x[h] > 0) || (sparsity.y[h] > 0) )
+      {
+        while ((my.norm(uh - uprevious) > epsilon)) {
 
-        uprevious <- uh
+          uprevious <- uh
 
-        lambda.x <- get_lambda(sparsity.x[h], ind.block.x, M0 %*% vh, 0)
-        uh <- Su(vh, M0, lambda.x, ng) ; uh <- normalize(uh)       ## row 11
+          lambda.x <- get_lambda(sparsity.x[h], ind.block.x, M0 %*% vh, 0)
+          uh <- Su(vh, M0, lambda.x, ng) ; uh <- normalize(uh)       ## row 11
 
-        lambda.y <- get_lambda(sparsity.y[h], ind.block.y, t(M0) %*% uh, 0)
-        vh <- Sv(uh, M0, lambda.y, ng) ; vh <- normalize(vh)       ## row 12
+          lambda.y <- get_lambda(sparsity.y[h], ind.block.y, t(M0) %*% uh, 0)
+          vh <- Sv(uh, M0, lambda.y, ng) ; vh <- normalize(vh)       ## row 12
+        }
       }
     }
 
@@ -298,5 +324,5 @@ algo1 <- function(X, Y, regularised="none", keepX=NULL, keepY=NULL, H = 3, alpha
 
   variates <- if(big_matrix) list(X = describe(xiH), Y = describe(omegaH)) else list(X = xiH, Y = omegaH)
 
-  return(list(loadings = list(X = Unew,Y = Vnew),variates = variates,ncomp=H))
+  return(list(loadings = list(X = Unew,Y = Vnew),variates = variates,ncomp=H,scale = scale))
 }

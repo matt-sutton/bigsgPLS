@@ -71,11 +71,13 @@ bigscale <- function(Xdes, ng = 1) {
   term <- res[(p + 1):(2 * p)]
   standard.deviation <- sqrt(res[1:p] / (n - 1) - term ^ 2 / (n * (n - 1)))
   average <- term / n
+  remov_sd <- standard.deviation != 0
 
   foreach(g = 1:ng) %dopar% {
     size.chunk <- nrow(X) / ng
     rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-    X[rows,] <- scale(X[rows,], center = average, scale = standard.deviation)
+    X[rows,remov_sd] <- scale(X[rows,remov_sd], center = average[remov_sd], scale = standard.deviation[remov_sd])
+    X[rows,!remov_sd] <- 0
   }
   return()
 }
