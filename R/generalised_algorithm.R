@@ -18,7 +18,6 @@
 #' @param H the number of components to include in the model.
 #' @param case matches the Algorithm in the paper.
 #' @param ng size of chunks for fast computation
-#' @param ng size of chunks for fast computation
 #' @param ind.block.x a vector of integers describing the grouping of the \eqn{X}-variables.
 #' @param ind.block.y a vector of integers describing the grouping of the \eqn{Y}-variables.
 #' @examples
@@ -131,16 +130,16 @@ algo1 <- function(X,
     X[is.nan(X)] <- 0
     Y <- scale(Y)
   } else{
-    bigscale(X, ng = 1)
-    bigscale(Y, ng = 1)
+    bigscale(X, ng = ng)
+    bigscale(Y, ng = ng)
   }
   #bigscale(Y, ng = 100)
 
   #------------------------#
   #--Set Regularisation --#
 
-  Su <- function(v, M, lambda, ng = 1) M %*% v
-  Sv <- function(u, M, lambda, ng = 1) t(M) %*% u
+  Su <- function(v, M, lambda) M %*% v
+  Sv <- function(u, M, lambda) t(M) %*% u
 
 
   if(regularised=="sparse")
@@ -150,8 +149,8 @@ algo1 <- function(X,
     sparsity.y <- get_sparsity(keepY, q, H)
 
     #--- sPLS sparsifier ---#
-    Su <- function(v, M, lambda, ng = 1) soft.thresholding(M %*% v, lambda)
-    Sv <- function(u, M, lambda, ng = 1) soft.thresholding(t(M) %*% u, lambda)
+    Su <- function(v, M, lambda) soft.thresholding(M %*% v, lambda)
+    Sv <- function(u, M, lambda) soft.thresholding(t(M) %*% u, lambda)
 
   }
 
@@ -163,11 +162,11 @@ algo1 <- function(X,
     sparsity.y <- get_sparsity(keepY, length(ind.block.y)+1, H)
 
     #--- gPLS sparsifier ---#
-    Su <- function(v, M, lambda, ng = 1) {
+    Su <- function(v, M, lambda) {
       x <- M %*% v
       soft.thresholding.group(x,ind.block.x, lambda)
     }
-    Sv <- function(u, M, lambda, ng = 1) {
+    Sv <- function(u, M, lambda) {
       x <- t(M) %*% u
       soft.thresholding.group(x,ind.block.y, lambda)
     }
@@ -181,11 +180,11 @@ algo1 <- function(X,
     sparsity.x <- get_sparsity(keepX, length(ind.block.x)+1, H)
     sparsity.y <- get_sparsity(keepY, length(ind.block.y)+1, H)
 
-    Su <- function(v, M, lambda, ng = 1) {
+    Su <- function(v, M, lambda) {
       x <- M %*% v
       soft.thresholding.sparse.group(x, ind.block.x, lambda, alpha = alpha.x)
     }
-    Sv <- function(u, M, lambda, ng = 1) {
+    Sv <- function(u, M, lambda) {
       x <- t(M) %*% u
       soft.thresholding.sparse.group(x, ind.block.y, lambda, alpha = alpha.y)
     }
@@ -253,10 +252,10 @@ algo1 <- function(X,
           uprevious <- uh
 
           lambda.x <- get_lambda(sparsity.x[h], ind.block.x, M0 %*% vh, 0)
-          uh <- Su(vh, M0, lambda.x, ng) ; uh <- normalize(uh)       ## row 11
+          uh <- Su(vh, M0, lambda.x) ; uh <- normalize(uh)       ## row 11
 
           lambda.y <- get_lambda(sparsity.y[h], ind.block.y, t(M0) %*% uh, 0)
-          vh <- Sv(uh, M0, lambda.y, ng) ; vh <- normalize(vh)       ## row 12
+          vh <- Sv(uh, M0, lambda.y) ; vh <- normalize(vh)       ## row 12
         }
       }
     }
