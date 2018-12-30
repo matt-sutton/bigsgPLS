@@ -3,7 +3,7 @@ big_svd <- function(M,ng=1){
   q <- if(is.matrix(M)) ncol(M) else 1
   maxnumb <- 50000
   if(p < maxnumb & q < maxnumb ){
-    return(RSpectra::svds(M, nu = 1, nv = 1))
+    return(RSpectra::svds(M, nu = 1, nv = 1, k=1))
   }
   if(p > maxnumb & p/q > ng ){
     return(snm_svd(M, s = ng, h = 1))
