@@ -1,13 +1,14 @@
 # X and Y should be standardized,  e.g.:
 # Below, X should be a big.memory.matrix
-readchunk <- function(X, g, size.chunk) {
-  rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-  chunk <- X[rows,]
+readchunk <- function(X,GPU) {
+  if(GPU)
+    return(gpuR::gpuMatrix(X))
+  else
+    return(X)
 }
 
 #-- Parse either matrix or descriptor --#
 parse_mat <- function(X){
-
   X <- switch(class(X),
          "big.matrix.descriptor" = bigmemory::attach.big.matrix(X),
          "matrix" = X,
@@ -21,20 +22,21 @@ parse_mat <- function(X){
 # Return the cross product of  X : n x p   Y: n x q
 # fast for large n  (p, q << n)
 #
-cpc <- function(X, Y, ng = 1) {
+cpc <- function(X, Y, ng = 1, GPU) {
 
   X <- parse_mat(X)
   Y <- parse_mat(Y)
-  require(foreach)
-  res <- foreach(g = 1:ng, .combine = "+") %dopar% {
+  if(GPU) { require(gpuR) }
+  res <- foreach(g = 1:ng, .combine = "+", .packages = c("bigsgPLS")) %dopar% {
     size.chunk <- nrow(X) / ng
-    chunk.X <- readchunk(X, g, size.chunk)
-    chunk.Y <- readchunk(Y, g, size.chunk)
-    term <- t(chunk.X) %*% chunk.Y
+    rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+    chunk.tX <- readchunk(t(X[rows,]), GPU = GPU)
+    chunk.Y <- readchunk(Y[rows,], GPU = GPU)
+    term <- chunk.tX %*% chunk.Y
+    term[]
   }
   return(res)
 }
-
 
 #--     product chunk function    --#
 #
@@ -48,13 +50,28 @@ prodchunk <- function(des_mat, weight, ng) {
   size.chunk <- n / ng
 
   require(foreach)
-  res <- foreach(g = 1:ng, .combine = 'rbind', .inorder = TRUE) %dopar% {
+  res <- foreach(g = 1:ng, .combine = 'rbind', .packages = c("bigsgPLS")) %dopar% {
     rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
     mat[rows,]%*%weight
   }
   return(res)
 }
 
+#-- Internal big data function for deflating  --#
+deflate <- function(Xdes, score, loading, ng=1) {
+
+  X <- parse_mat(Xdes)
+  n <- nrow(X)
+  size.chunk <- n / ng
+
+  foreach(g = 1:ng, .packages = c("bigsgPLS")) %dopar% {
+    rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+    X[rows,] <- X[rows,] - score[rows]%*%loading
+    gc()
+  }
+  if(class(X) == "matrix")
+    return(X)
+}
 
 bigscale <- function(Xdes, ng = 1) {
 
@@ -62,10 +79,10 @@ bigscale <- function(Xdes, ng = 1) {
   p <- ncol(X)
   n <- nrow(X)
 
-  require(foreach)
-  res <- foreach(g = 1:ng, .combine = "+") %dopar% {
-    size.chunk <- nrow(X) / ng
-    chunk <- readchunk(X, g, size.chunk)
+  size.chunk <- nrow(X) / ng
+  res <- foreach(g = 1:ng, .combine = "+", .packages = c("bigsgPLS")) %dopar% {
+    rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+    chunk <- X[rows,]
     term <- c(colSums(chunk ^ 2), colSums(chunk))
   }
   term <- res[(p + 1):(2 * p)]
@@ -73,11 +90,14 @@ bigscale <- function(Xdes, ng = 1) {
   average <- term / n
   remov_sd <- standard.deviation != 0
 
-  foreach(g = 1:ng) %dopar% {
+  foreach(g = 1:ng, .packages = c("bigsgPLS")) %dopar% {
     size.chunk <- nrow(X) / ng
     rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
     X[rows,remov_sd] <- scale(X[rows,remov_sd], center = average[remov_sd], scale = standard.deviation[remov_sd])
     X[rows,!remov_sd] <- 0
   }
+  gc()
   return()
 }
+
+

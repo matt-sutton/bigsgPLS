@@ -84,28 +84,15 @@ algo1 <- function(X,
                   ng = 1,
                   ind.block.x=NULL,
                   ind.block.y=NULL,
-                  scale =TRUE) {
+                  scale = TRUE,
+                  GPU = TRUE) {
 
-  #-- Internal big data function for deflating  --#
-  deflate <- function(des_mat, score, loading, ng) {
-
-    if(class(des_mat) == "matrix"){
-      return(des_mat - score%*%loading)
-    }
-    mat <- parse_mat(des_mat)
-    n <- nrow(mat)
-    size.chunk <- n / ng
-
-    foreach(g = 1:ng) %dopar% {
-      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-      mat[rows,] <- mat[rows,] - score[rows]%*%loading
-    }
-    return()
+  if(class(X) != class(Y)){
+    stop("Use the same class for X and Y")
   }
 
   if(class(X) == "big.matrix.descriptor"){
     n <- X@description$totalRows;   p <- X@description$totalCols;   q <- Y@description$totalCols; big_matrix <- TRUE
-
   }
   else {
     n <- nrow(X); p <- ncol(X); q <- ncol(Y); big_matrix <- FALSE
@@ -114,18 +101,14 @@ algo1 <- function(X,
   #-- Check data --#
   if (!(case %in% 1:4)) stop("'case' should be equal to 1, 2, 3 or 4.")
 
-  if(n > 10^4 & (class(X) != "big.matrix.descriptor" || class(Y) != "big.matrix.descriptor")){
-    stop("We recommend using bigmemory package for X and Y.")
-  }
-
-  if(class(X) != class(Y)){
-    stop("Use the same class for X and Y")
+  if(n > 10^5 & big_matrix == FALSE){
+    cat("We recommend using bigmemory package for X and Y.")
   }
 
   Unew <- Vnew <- NULL
 
   #-- Scale data if required --#
-  if(class(X) != "big.matrix.descriptor"){
+  if(!big_matrix){
     X <- scale(X)
     X[is.nan(X)] <- 0
     Y <- scale(Y)
@@ -211,7 +194,7 @@ algo1 <- function(X,
   }
 
   #-- Compute large cross product (cross product chunk)--#
-  M0 <- cpc(X, Y, ng) / (n - 1);
+  M0 <- cpc(X, Y, ng, GPU) / (n - 1);
 
   if (case == 3) {
     ##Computation of A and B ## rows 2
@@ -230,7 +213,7 @@ algo1 <- function(X,
   P <- Ip <- diag(1, nrow = p, ncol = p); Q <- Iq <- diag(1, nrow = q, ncol = q);
 
   for (h in 1:H) {
-    tmp <- big_svd(M0)
+    tmp <- big_svd(M0, ng)
 
     #-- remove sign indeterminacy --#
     i <- which.max(abs(tmp$u))
@@ -294,11 +277,11 @@ algo1 <- function(X,
       chm1T <- t(uh) ; ehm1T <- t(vh)  ## row 31
     } ## row 32
 
-    if ( case %in% c(2, 4) )  chm1T <- cpc( xih, X, ng) / my.norm2(xih) ## row 33
+    if ( case %in% c(2, 4) )  chm1T <- cpc( xih, X, ng, GPU) / my.norm2(xih) ## row 33
 
-    if ( case %in% 2 ) ehm1T <- cpc(omegah, Y) / my.norm2(omegah) ## row 34
+    if ( case %in% 2 ) ehm1T <- cpc(omegah, Y, ng, GPU) / my.norm2(omegah) ## row 34
 
-    if ( case %in% 4 ) dhm1T <- cpc(xih, Y) / my.norm2(xih) ## row 35
+    if ( case %in% 4 ) dhm1T <- cpc(xih, Y, ng, GPU) / my.norm2(xih) ## row 35
 
 
     #-- Deflate the matrices --#
@@ -315,7 +298,7 @@ algo1 <- function(X,
 
       } ## row 41
 
-    M0 <- cpc(X, Y, ng)
+    M0 <- cpc(X, Y, ng, GPU)
 
     Unew <- cbind(Unew,uh)
     Vnew <- cbind(Vnew,vh)
