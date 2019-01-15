@@ -32,8 +32,7 @@ cpc <- function(X, Y, ng = 1, GPU) {
     rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
     chunk.tX <- readchunk(t(X[rows,]), GPU = GPU)
     chunk.Y <- readchunk(Y[rows,], GPU = GPU)
-    term <- chunk.tX %*% chunk.Y
-    term[]
+    as.matrix(chunk.tX[] %*% chunk.Y[])
   }
   return(res)
 }
