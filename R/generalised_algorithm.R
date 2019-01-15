@@ -105,17 +105,36 @@ algo1 <- function(X,
     cat("We recommend using bigmemory package for X and Y.")
   }
 
-  Unew <- Vnew <- NULL
+  Unew <- Vnew <- Cnew <- NULL
+  Wnew <- Znew <- Enew <- NULL
 
   #-- Scale data if required --#
   if(!big_matrix){
+    x_scale <- apply(X, 2, sd)
+    x_scale[x_scale ==0] <- 1
+    x_means <- colMeans(X)
+    y_means <- colMeans(Y)
+    y_scale <- apply(Y, 2, sd)
+    y_scale[y_scale ==0] <- 1
+
     X <- scale(X)
     X[is.nan(X)] <- 0
     Y <- scale(Y)
   } else{
-    bigscale(X, ng = ng)
-    bigscale(Y, ng = ng)
+    scales <- bigscale(X, ng = ng)
+    x_scale <- scales$sd
+    x_scale[x_scale ==0] <- 1
+    x_means <- scales$mean
+    scales <- bigscale(Y, ng = ng)
+    y_scale <- scales$sd
+    y_scale[y_scale ==0] <- 1
+    y_means <- scales$mean
   }
+  Ymat <- NULL
+  if(case == 4){
+    Ymat <- parse_mat(Y)[]
+  }
+
   #bigscale(Y, ng = 100)
 
   #------------------------#
@@ -215,12 +234,12 @@ algo1 <- function(X,
   for (h in 1:H) {
     tmp <- big_svd(M0, ng)
 
-    #-- remove sign indeterminacy --#
-    i <- which.max(abs(tmp$u))
-    if (tmp$u[i] <= 0) {
-      tmp$u <- -tmp$u
-      tmp$v <- -tmp$v
-    }
+    # #-- remove sign indeterminacy --#
+    # i <- which.max(abs(tmp$u))
+    # if (tmp$u[i] <= 0) {
+    #   tmp$u <- -tmp$u
+    #   tmp$v <- -tmp$v
+    # }
 
     uh <- tmp$u
     vh <- tmp$v
@@ -255,8 +274,8 @@ algo1 <- function(X,
     } ## row 18
 
     if ( case %in% 2 ) { ## row 19
-      P <- P %*% (Ip - uhm1 %*% chm1T)  ## row 20
-      Q <- Q %*% (Iq - vhm1 %*% ehm1T)  ## row 21
+      P <- P %*% (Ip - uh %*% chm1T)  ## row 20
+      Q <- Q %*% (Iq - vh %*% ehm1T)  ## row 21
       wh <- P %*% uh ; zh <- Q %*% vh ## row 22
     } ## row 23
 
@@ -265,11 +284,13 @@ algo1 <- function(X,
       } ## row 24
 
     if ( case %in% 4 ) { ## row 25
-      P <- P %*% (Ip - uhm1 %*% chm1T)  ## row 26
-      wh <- P %*% uh  ## row 27
-      zh <- vh  ## row 28
+      #P <- P %*% (Ip - uh %*% chm1T)  ## row 26
+      if(h ==1) {wh=uh;zh=vh} else{
+        P <- (Ip - Wnew[,1:(h-1)] %*% t(Cnew))  ## row 26
+        wh <- P %*% uh  ## row 27
+        zh <- vh  ## row 28
+      }
     } ## row 29
-
 
     #-- Compute the PLS loadings --#
 
@@ -282,7 +303,6 @@ algo1 <- function(X,
     if ( case %in% 2 ) ehm1T <- cpc(omegah, Y, ng, GPU) / my.norm2(omegah) ## row 34
 
     if ( case %in% 4 ) dhm1T <- cpc(xih, Y, ng, GPU) / my.norm2(xih) ## row 35
-
 
     #-- Deflate the matrices --#
 
@@ -302,9 +322,19 @@ algo1 <- function(X,
 
     Unew <- cbind(Unew,uh)
     Vnew <- cbind(Vnew,vh)
+    Wnew <- cbind(Wnew,wh)
+    Znew <- cbind(Znew,zh)
+    Cnew <- cbind(Cnew,t(chm1T))
+    Enew <- cbind(Enew,t(ehm1T))
   }
 
   variates <- if(big_matrix) list(X = describe(xiH), Y = describe(omegaH)) else list(X = xiH, Y = omegaH)
 
-  return(list(loadings = list(X = Unew,Y = Vnew),variates = variates,ncomp=H,scale = scale))
+  scales <- list(
+    x_scale = x_scale, y_scale = y_scale, x_means = x_means, y_means = y_means
+  )
+  return(list(adjloadings = list(X = Wnew,Y = Znew),
+              loadings = list(X = Unew,Y = Vnew),
+              CEmat = list(Cmat = Cnew, Emat = Enew),
+              variates = variates,ncomp=H,scales = scales, Y = Ymat))
 }

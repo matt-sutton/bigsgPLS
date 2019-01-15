@@ -97,7 +97,7 @@ bigscale <- function(Xdes, ng = 1) {
     X[rows,!remov_sd] <- 0
   }
   gc()
-  return()
+  return(list(sd=standard.deviation, mean=average))
 }
 
 
