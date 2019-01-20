@@ -71,7 +71,7 @@
 #'
 #'
 
-algo1 <- function(X,
+bigsgpls <- function(X,
                   Y,
                   regularised="none",
                   keepX=NULL,
@@ -82,6 +82,7 @@ algo1 <- function(X,
                   case = 2,
                   epsilon = 10 ^ -6,
                   ng = 1,
+                  big_matrix_backing = NULL,
                   ind.block.x=NULL,
                   ind.block.y=NULL,
                   scale = TRUE,
@@ -91,8 +92,9 @@ algo1 <- function(X,
     stop("Use the same class for X and Y")
   }
 
-  if(class(X) == "big.matrix.descriptor"){
-    n <- X@description$totalRows;   p <- X@description$totalCols;   q <- Y@description$totalCols; big_matrix <- TRUE
+  n <- nrow(X);   p <- ncol(X);   q <- ncol(Y)
+  if(class(X) == "big.matrix"){
+    big_matrix <- TRUE
   }
   else {
     n <- nrow(X); p <- ncol(X); q <- ncol(Y); big_matrix <- FALSE
@@ -132,7 +134,7 @@ algo1 <- function(X,
   }
   Ymat <- NULL
   if(case == 4){
-    Ymat <- parse_mat(Y)[]
+    Ymat <- Y[,,drop=F]
   }
 
   #bigscale(Y, ng = 100)
@@ -195,20 +197,20 @@ algo1 <- function(X,
 
   #--- Initalise scores  ---#
 
-  if(!big_matrix)
+  if(is.null(big_matrix_backing))
     {
     xiH <- matrix(nrow = n, ncol = H)
     omegaH <- matrix(nrow = n, ncol = H)
 
-    } else{
+    } else {
     xiH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                  backingfile="xi.bin",
-                                 descriptorfile="xi.desc")
+                                 descriptorfile="xi.desc", backingpath = big_matrix_backing)
     xides <- describe(xiH)
 
     omegaH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                     backingfile="omega.bin",
-                                    descriptorfile="omega.desc")
+                                    descriptorfile="omega.desc", backingpath = big_matrix_backing)
     omegades <- describe(omegaH)
   }
 
@@ -328,7 +330,7 @@ algo1 <- function(X,
     Enew <- cbind(Enew,t(ehm1T))
   }
 
-  variates <- if(big_matrix) list(X = describe(xiH), Y = describe(omegaH)) else list(X = xiH, Y = omegaH)
+  variates <- if(!is.null(big_matrix_backing)) list(X = describe(xiH), Y = describe(omegaH)) else list(X = xiH, Y = omegaH)
 
   scales <- list(
     x_scale = x_scale, y_scale = y_scale, x_means = x_means, y_means = y_means
