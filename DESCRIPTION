@@ -9,8 +9,8 @@ Description: Implementation of sparse and group sparse PLS methods for big data.
     It's more memory efficient than existing packages.
 License: GPL (>= 2)
 Depends: R (>= 3.3.0), bigmemory (>= 4.0.0)
-Imports: expm, irlba, stats, Matrix, gpuR, foreach, utils
-Suggests: doParallel, mvtnorm, dummies
+Imports: expm, irlba, stats, Matrix, foreach, utils
+Suggests: doParallel, mvtnorm, dummies, gpuR
 NeedsCompilation: yes
 Encoding: UTF-8
 RoxygenNote: 6.1.1
