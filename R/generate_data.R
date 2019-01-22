@@ -8,11 +8,10 @@
 #' @param p number of parameters
 #' @param chunk.size size for chunks
 #' @return write an X and Y file of required size.
-#'
+#' @export
 
 create.big.file.model.case3 <- function(fileX = "Xda.csv", fileY = "Yda.csv", size.min, p=300,chunk.size=9000) {
 
-  require(bigmemory)
   set.seed(123)
   mu <- c(-1,1,2)
   sigma2 <- 1
@@ -27,8 +26,8 @@ create.big.file.model.case3 <- function(fileX = "Xda.csv", fileY = "Yda.csv", si
   Y <- rep(c("1","2","3"),each=floor(n/3))
   Y = dummies::dummy(Y)
 
-  write.table(Y,fileY,col.names=F,sep=",", append=FALSE,row.names = FALSE)
-  write.table(X, fileX, row.names = FALSE, col.names = FALSE, append = FALSE, sep = ",")
+  utils::write.table(Y,fileY,col.names=F,sep=",", append=FALSE,row.names = FALSE)
+  utils::write.table(X, fileX, row.names = FALSE, col.names = FALSE, append = FALSE, sep = ",")
 
   while (file.info(fileX)$size < size.min) {
     cat("Current file size:",file.info(fileX)$size,"\n")
@@ -40,11 +39,24 @@ create.big.file.model.case3 <- function(fileX = "Xda.csv", fileY = "Yda.csv", si
     Y <- rep(c("1","2","3"),each=floor(n/3))
     Y <- dummies::dummy(Y)
 
-    write.table(Y,fileY,col.names=F,sep=",", append=TRUE,row.names = FALSE)
-    write.table(X, fileX, row.names = FALSE, col.names = FALSE, append = TRUE, sep = ",")
+    utils::write.table(Y,fileY,col.names=F,sep=",", append=TRUE,row.names = FALSE)
+    utils::write.table(X, fileX, row.names = FALSE, col.names = FALSE, append = TRUE, sep = ",")
   }
 }
 
+#' Simulate data matching the article
+#'
+#' Produce a Big data file for replicaiton of the paper results.
+#'
+#' @param fileX filename of output X
+#' @param fileY filename of output Y
+#' @param size.min minimum size for output X file
+#' @param p number of parameters X block
+#' @param q number of parameters Y block
+#' @param chunk.size size for chunks
+#' @return write an X and Y file of required size.
+#' @importFrom stats rnorm
+#' @export
 create.big.file.model.case1 <- function(fileX = "X.csv", fileY = "Y.csv", size.min, p=400, q=500,chunk.size=10000) {
   set.seed(125)
   sigma.gamma <- 1; sigma.e <- 1.5
@@ -74,8 +86,8 @@ create.big.file.model.case1 <- function(fileX = "X.csv", fileY = "Y.csv", size.m
                                                                  nrow = 2, byrow = TRUE) + mvtnorm::rmvnorm(chunk.size, mean = rep(0, q), sigma =
                                                                                                      Sigmay, method = "svd")
   X <- matrix(rnorm(chunk.size * p), nrow = chunk.size, ncol = p)
-  write.table(X, fileX, row.names = FALSE, col.names = FALSE, append = FALSE, sep = ",")
-  write.table(Y, fileY, row.names = FALSE, col.names = FALSE, append = FALSE, sep = ",")
+  utils::write.table(X, fileX, row.names = FALSE, col.names = FALSE, append = FALSE, sep = ",")
+  utils::write.table(Y, fileY, row.names = FALSE, col.names = FALSE, append = FALSE, sep = ",")
 
   while (file.info(fileY)$size < size.min) {
 
@@ -88,7 +100,7 @@ create.big.file.model.case1 <- function(fileX = "X.csv", fileY = "Y.csv", size.m
     Y <- matrix(c(gam1, gam2), ncol = 2, byrow = FALSE) %*% matrix(c(theta.y1, theta.y2),
                                                                    nrow = 2, byrow = TRUE) + mvtnorm::rmvnorm(chunk.size, mean = rep(0, q), sigma =
                                                                                                        Sigmay, method = "svd")
-    write.table(X, fileX, row.names = FALSE, col.names = FALSE, append = TRUE, sep = ",")
-    write.table(Y, fileY, row.names = FALSE, col.names = FALSE, append = TRUE, sep = ",")
+    utils::write.table(X, fileX, row.names = FALSE, col.names = FALSE, append = TRUE, sep = ",")
+    utils::write.table(Y, fileY, row.names = FALSE, col.names = FALSE, append = TRUE, sep = ",")
   }
 }

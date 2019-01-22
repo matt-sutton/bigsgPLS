@@ -5,71 +5,51 @@
 #' The sgPLS approach enables selection at both groups and single
 #' feature levels.
 #'
-#' @param Xdes matrix of predictors
-#' @param Ydes matrix of responses
-#' @param Ydes matrix of responses
-#' @param lambda penalisation parameter
+#' @param X matrix or big.matrix object for data measured on the same samples. Corresponds to predictors in Case 2.
+#' @param Y matrix or big.matrix object for data measured on the same samples. Corresponds to responses in Case 4.
 #' @param regularised type of regularisation
-#' @param lambda penalisation parameter
 #' @param keepX penalisation parameter numeric vector of length \code{H}, the number of variables
 #' to keep in \eqn{X}-loadings. By default all variables are kept in the model.
 #' @param keepY penalisation parameter numeric vector of length \code{H}, the number of variables
 #' to keep in \eqn{Y}-loadings. By default all variables are kept in the model.
 #' @param H the number of components to include in the model.
 #' @param case matches the Algorithm in the paper.
-#' @param ng size of chunks for fast computation
+#' @param alpha.x The mixing parameter (value between 0 and 1) related to the sparsity within group for the X dataset.
+#' @param alpha.y The mixing parameter (value between 0 and 1) related to the sparsity within group for the Y dataset.
 #' @param ind.block.x a vector of integers describing the grouping of the \eqn{X}-variables.
 #' @param ind.block.y a vector of integers describing the grouping of the \eqn{Y}-variables.
+#' @param epsilon A positive real, the tolerance used in the iterative algorithm.
+#' @param ng The number of chuncks used to read in the data and process using parallel computing.
+#' @param big_matrix_backing Gives the folder to use for file backed output. If NULL then output is not file backed.
+#' @param GPU If TRUE then use the GPU for calculation of the chunks in the cross product. Default FALSE.
+#' @param scale If TRUE then the PLS data blocks are standardized to zero means and unit variances. Default TRUE.
+#' @param lambda Lambda for use in Case 3 the CCA implmenetation of PLS. Default 0.
+#'
 #' @examples
 #'
-#' library(bigsgPLS)
+#' set.seed(1)
+#' n <- 500
+#' p <- 50
+#' X = scale(matrix(rnorm(n*p), ncol = p, nrow = n))
+#' y = X[,1:5] %*% 1:5 + rnorm(n)
+#'
 #' library(bigmemory)
+#' X.bm <- as.big.matrix(X)
+#' y.bm <- as.big.matrix(y)
 #'
-#' # Crreate some example data
-#' # create.big.file.model.case3(size.max = 5000000000)
+#' library(doParallel)
+#' registerDoParallel(cores = 2)
+#' getDoParWorkers()
+#' fit.PLS <- bigsgpls(X.bm, y.bm, case = 4, H = 4, ng = 10, keepX = rep(5,4))
+#' pred.fit <- predict(fit.PLS, newX = X, ng = 1)
+#' round(pred.fit$Beta,3)
 #'
-#' dataX <- read.big.matrix("Xda.csv", header = FALSE, backingfile = "Xda.bin", descriptorfile = "Xda.desc", type = "double")
-#' Xdes <- describe(dataX)
-#'
-#' library(doSNOW)
-#' cl <- makeCluster(4)
-#' registerDoSNOW(cl)
-#'
-#' bigscale(Xdes, ng = 100)
-#'
-#' xx <- attach.big.matrix(Xdes)
-#' n <- nrow(xx)
-#'
-#' dataY <- read.big.matrix("Yda.csv", header = FALSE, backingfile = "Yda.bin", descriptorfile = "Yda.desc", type = "double")
-#'
-#' bigscale(Ydes, ng = 100)
-#' yy <- attach.big.matrix(Ydes)
-#'
-#' ind.block.x <- seq(100, 500, 100)
-#' model.group.sparse.da <- algo1(Xdes, Ydes, lambda=1,regularised = "group",keepX = c(3,3),keepY = NULL,ind.block.x = ind.block.x, ind.block.y = NULL, H = 2, case = 4, epsilon = 10 ^ -6, ng = 100)
-#'
-#' xi <- attach.big.matrix(model.group.sparse.da$xides)
-#' omega <- attach.big.matrix(model.group.sparse.da$omegades)
-#'
-#' which(model.group.sparse.da$loadings$X[,1]!=0)
-#' which(model.group.sparse.da$loadings$X[,2]!=0)
-#'
-#' xiselect <- xi[1:9000,]
-#'
-#' par(mfrow=c(1,1))
-#'
-#' y1 <- range(xiselect[,1])
-#' x1 <- range(xiselect[,2])
-#'
-#' X11(type="cairo")
-#' par(mfrow=c(1,1),mar=c(4,4,1,1)+0.1)
-#' plot(-4:4, -4:4, type = "n",ylim=x1,xlim=y1,xlab="Latent variable 1",ylab="Latent variable 2")
-#' points(xiselect[1:3000,1],xiselect[1:3000,2],col="red",pch=2)
-#' points(xiselect[3001:6000,1],xiselect[3001:6000,2],col="blue",pch=3)
-#' points(xiselect[6001:9000,1],xiselect[6001:9000,2],col="black",pch=4)
-#' legend("topleft",inset=0.02,c("1","2","3"),col=c("red","blue","black"),pch=c(2,3,4))
-#'
-#'
+#' @import Matrix
+#' @import foreach
+#' @import irlba
+#' @import bigmemory
+#' @importFrom stats sd
+#' @export
 
 bigsgpls <- function(X,
                   Y,
@@ -86,7 +66,13 @@ bigsgpls <- function(X,
                   ind.block.x=NULL,
                   ind.block.y=NULL,
                   scale = TRUE,
-                  GPU = TRUE) {
+                  GPU = FALSE,
+                  lambda = 0) {
+
+  if (!requireNamespace("gpuR", quietly = TRUE) && GPU) {
+    stop("Package \"gpuR\" needed for the GPU computation to work. Please see https://github.com/cdeterman/gpuR/wiki for installation instructions.",
+         call. = FALSE)
+  }
 
   if(class(X) != class(Y)){
     stop("Use the same class for X and Y")
@@ -141,10 +127,6 @@ bigsgpls <- function(X,
 
   #------------------------#
   #--Set Regularisation --#
-
-  Su <- function(v, M, lambda) M %*% v
-  Sv <- function(u, M, lambda) t(M) %*% u
-
 
   if(regularised=="sparse")
     {
@@ -203,15 +185,15 @@ bigsgpls <- function(X,
     omegaH <- matrix(nrow = n, ncol = H)
 
     } else {
-    xiH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
+    xiH <- bigmemory::filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                  backingfile="xi.bin",
                                  descriptorfile="xi.desc", backingpath = big_matrix_backing)
-    xides <- describe(xiH)
+    xides <- bigmemory::describe(xiH)
 
-    omegaH <- filebacked.big.matrix(nrow = n, ncol = H, type='double',
+    omegaH <- bigmemory::filebacked.big.matrix(nrow = n, ncol = H, type='double',
                                     backingfile="omega.bin",
                                     descriptorfile="omega.desc", backingpath = big_matrix_backing)
-    omegades <- describe(omegaH)
+    omegades <- bigmemory::describe(omegaH)
   }
 
   #-- Compute large cross product (cross product chunk)--#
@@ -223,8 +205,8 @@ bigsgpls <- function(X,
     #-- ***** Fix this later ***** ---#
 
     N0y <- cpc(Y, Y, ng)
-    A <- sqrtm(N0+lambda)
-    B <- sqrtm(N0y+lambda)
+    A <- expm::sqrtm(N0y+lambda)
+    B <- expm::sqrtm(N0y+lambda)
     M0 <- A%*%M0%*%B
   }
 
@@ -237,11 +219,11 @@ bigsgpls <- function(X,
     tmp <- big_svd(M0, ng)
 
     # #-- remove sign indeterminacy --#
-    # i <- which.max(abs(tmp$u))
-    # if (tmp$u[i] <= 0) {
-    #   tmp$u <- -tmp$u
-    #   tmp$v <- -tmp$v
-    # }
+    i <- which.max(abs(tmp$u))
+    if (tmp$u[i] <= 0) {
+      tmp$u <- -tmp$u
+      tmp$v <- -tmp$v
+    }
 
     uh <- tmp$u
     vh <- tmp$v
@@ -330,13 +312,16 @@ bigsgpls <- function(X,
     Enew <- cbind(Enew,t(ehm1T))
   }
 
-  variates <- if(!is.null(big_matrix_backing)) list(X = describe(xiH), Y = describe(omegaH)) else list(X = xiH, Y = omegaH)
+  variates <- if(!is.null(big_matrix_backing)) list(X = bigmemory::describe(xiH), Y = bigmemory::describe(omegaH)) else list(X = xiH, Y = omegaH)
 
   scales <- list(
     x_scale = x_scale, y_scale = y_scale, x_means = x_means, y_means = y_means
   )
-  return(list(adjloadings = list(X = Wnew,Y = Znew),
-              loadings = list(X = Unew,Y = Vnew),
-              CEmat = list(Cmat = Cnew, Emat = Enew),
-              variates = variates,ncomp=H,scales = scales, Y = Ymat))
+  fit <- list(adjloadings = list(X = Wnew,Y = Znew),
+       loadings = list(X = Unew,Y = Vnew),
+       CEmat = list(Cmat = Cnew, Emat = Enew),
+       variates = variates,ncomp=H,scales = scales, Y = Ymat)
+  class(fit) = c(class(fit),"bigsgPLS")
+
+  return(fit)
 }

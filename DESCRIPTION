@@ -4,11 +4,13 @@ Title: Implementation of sgPLS for Big data
 Version: 0.1.0
 Author: Pierre Lafaye De Micheaux, Benoit Liquet, Matthew Sutton
 Maintainer: Matthew Sutton <matt.sutton@qut.edu.au>
-Description: Basic implementation of big data PLS methods
-License: GPL (>= 2.0)
-Imports: expm,
-         bigmemory,
-         mvtnorm,
-         dummies,
-         foreach
-RoxygenNote: 6.0.1
+Description: Implementation of sparse and group sparse PLS methods for big data. 
+    The package implements 2 block PLS methods and sparse variants for big data. 
+    It's more memory efficient than existing packages.
+License: GPL (>= 2)
+Depends: R (>= 3.3.0), bigmemory (>= 4.0.0)
+Imports: expm, irlba, stats, Matrix, gpuR, foreach, utils
+Suggests: doParallel, mvtnorm, dummies
+NeedsCompilation: yes
+Encoding: UTF-8
+RoxygenNote: 6.1.1

@@ -1,22 +1,3 @@
-# X and Y should be standardized,  e.g.:
-# Below, X should be a big.memory.matrix
-readchunk <- function(X,GPU) {
-  if(GPU)
-    return(gpuR::gpuMatrix(X))
-  else
-    return(X)
-}
-
-#-- Parse either matrix or descriptor --#
-parse_mat <- function(X){
-  X <- switch(class(X),
-         "big.matrix.descriptor" = bigmemory::attach.big.matrix(X),
-         "matrix" = X,
-         stop("data should be a matrix or big matrix descriptor.")
-  )
-}
-
-
 #--     cross product chunk function    --#
 #
 # Return the cross product of  X : n x p   Y: n x q
@@ -44,11 +25,10 @@ cpc <- function(X, Y, ng = 1, GPU) {
 # Return the matrix product of  mat :n x p  weight: p x r
 # fast for large n  (p, r << n)
 #
-prodchunk <- function(mat, weight, ng) {
+prodchunk <- function(mat, weight, ng = 1) {
   n <- nrow(mat)
   size.chunk <- n / ng
 
-  require(foreach)
   res <- foreach(g = 1:ng, .combine = 'rbind', .packages = c("bigsgPLS")) %dopar% {
     rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
     mat[rows,]%*%weight

@@ -122,7 +122,7 @@ get_lambda<- function(sparsity, ind, x, alpha){
       vecx <- x[((tab.ind[i]+1):tab.ind[i+1])]
       upperlim <- 2*my.norm(vecx)
 
-      res <- c(res,uniroot(lambda_sg_S, lower = 0, upper = upperlim, Mv = vecx, alpha = alpha))
+      res <- c(res,stats::uniroot(lambda_sg_S, lower = 0, upper = upperlim, Mv = vecx, alpha = alpha))
     }
     lambda <- sort(res)[sparsity]
     return(lambda)

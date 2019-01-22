@@ -2,13 +2,13 @@ big_svd <- function(M,ng=1){
   p <- if(is.matrix(M)) nrow(M) else 1
   q <- if(is.matrix(M)) ncol(M) else 1
   maxnumb <- 50000
-  if(p<3 || q < 3){
+  if(p==1 || q == 1){
     return(svd(M, nu = 1, nv = 1))
+  if(p > maxnumb & p/q > ng ){
   }
   if(p < maxnumb & q < maxnumb ){
-    return(RSpectra::svds(M, nu = 1, nv = 1, k=1))
+    return(irlba::irlba(M, nu = 1, nv = 1))
   }
-  if(p > maxnumb & p/q > ng ){
     return(snm_svd(M, s = ng, h = 1))
   }
 }
@@ -28,7 +28,7 @@ snm_svd <- function(X, s, h){
     v <- svdX$v
     list(H=D%*%t(v), U = list(svdX$u))
   }
-  svdH <- RSpectra::svds(UHmat$H, h, nu =h, nv = h)
+  svdH <- irlba::irlba(UHmat$H, nu =h, nv = h)
   u <- bdiag(UHmat$U)%*%svdH$u
   v <- svdH$v
   d <- svdH$d
