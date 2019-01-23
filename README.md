@@ -14,7 +14,7 @@ Use [devtools](https://github.com/hadley/devtools) to install:
 
 ```R
 library(devtools)
-install_github("bigsgPLS", "matt-sutton")
+install_github("matt-sutton/bigsgPLS", host = "https://api.github.com")
 ```
 
 Example Usage

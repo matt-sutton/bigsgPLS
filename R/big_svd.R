@@ -4,12 +4,12 @@ big_svd <- function(M,ng=1){
   maxnumb <- 50000
   if(p==1 || q == 1){
     return(svd(M, nu = 1, nv = 1))
+  }
   if(p > maxnumb & p/q > ng ){
+    return(snm_svd(M, s = ng, h = 1))
   }
   if(p < maxnumb & q < maxnumb ){
     return(irlba::irlba(M, nu = 1, nv = 1))
-  }
-    return(snm_svd(M, s = ng, h = 1))
   }
 }
 
