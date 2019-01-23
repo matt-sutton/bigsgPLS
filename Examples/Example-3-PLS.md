@@ -7,6 +7,8 @@ Big sgPLS
 Big PLS (EMNIST)
 ----------------------
 
+*See Also* [Example 1](Example-1-gPLS.md), [Example 2](Example-2-gPLS-DA.md) and [general documentation](../README.md)
+
 ``` r
 library(bigsgPLS)
 fileX <- "../data/emnist_images_training_set.csv"
