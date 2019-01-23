@@ -20,4 +20,4 @@ install_github("matt-sutton/bigsgPLS", host = "https://api.github.com")
 Example Usage
 -------------
 
-Examples from the bigsgPLS paper can be replcated by following the process described in: [Example 1](Examples/Example-1-gPLS.md) and [Example 2](Examples/Example-2-gPLS-DA.md)
+Examples from the bigsgPLS paper can be replcated by following the process described in: [Example 1](Examples/Example-1-gPLS.md) and [Example 2](Examples/Example-2-gPLS-DA.md) and [Example 3](Examples/Example-3-PLS.md)

@@ -9,7 +9,7 @@ Big Group PLS Discriminant Analysis
 
 The code below replicates the discrimination analysis example. Choose a directory for the data to be generated.
 
-*See Also* [Example 1](Example-1-gPLS.md) and [general documentation](../)
+*See Also* [Example 1](Example-1-gPLS.md), [Example 3](Example-3-PLS.md) and [general documentation](../README.md)
 
 ``` r
 library(bigsgPLS)
