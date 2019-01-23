@@ -2,12 +2,11 @@
 Big sgPLS
 =========
 
-`bigsgPLS` is an R package that provides an implementation of the two block PLS methods. A preliminary paper has been submitted describing the algorithm and will be made avaliable when the manuscript is accepted.
+This example compares our implementation of (regression) gPLS to an alternative package and perfoms a simple run on simulated data.
 
-Big Group PLS (Test and Example)
---------------------------------
-
-The code below checks the method returns the same results for gPLS (using the sgPLS package). The method is then applied to a large dataset (as used in the submitted article).
+Authors
+--------
+This is joint work with Pierre Lafeye De Micheaux and Benoit Liquet. A preliminary paper describing the PLS methods and some of the statistical properties is avaliable on [ArXiv Pre-prints.](https://arxiv.org/abs/1702.07066)
 
 *See Also* [Example 2](Example-2-gPLS-DA.md), [Example 3](Example-3-PLS.md) and [general documentation](../README.md)
 

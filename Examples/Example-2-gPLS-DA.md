@@ -2,7 +2,7 @@
 Big sgPLS
 =========
 
-`bigsgPLS` is an R package that provides an implementation of the two block PLS methods. A preliminary paper has been submitted describing the algorithm and will be made avaliable when the manuscript is accepted.
+This example uses gPLS on simulated large data for discriminant analysis.
 
 Big Group PLS Discriminant Analysis
 -----------------------------------
