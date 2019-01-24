@@ -38,7 +38,7 @@ y.bm <- as.big.matrix(y)
 library(doParallel)
 registerDoParallel(cores = 2)
 getDoParWorkers()
-fit.PLS <- bigsgpls(X.bm, y.bm, case = 4, H = 4, ng = 10, keepX = rep(5,4))
+fit.PLS <- bigsgpls(X.bm, y.bm, case = 4, H = 4, ng = 10, keepX = rep(5,4), regularised = "sparse")
 pred.fit <- predict(fit.PLS, newX = X, ng = 1)
 round(pred.fit$Beta,3)
 

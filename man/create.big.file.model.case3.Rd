@@ -8,11 +8,11 @@ create.big.file.model.case3(fileX = "Xda.csv", fileY = "Yda.csv",
   size.min, p = 300, chunk.size = 9000)
 }
 \arguments{
-\item{fileX}{filename of output X}
+\item{fileX}{filename of output X.}
 
-\item{fileY}{filename of output Y}
+\item{fileY}{filename of output Y.}
 
-\item{size.min}{minimum size for output X file}
+\item{size.min}{minimum size for output X.}
 
 \item{p}{number of parameters}
 

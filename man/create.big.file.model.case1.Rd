@@ -4,19 +4,19 @@
 \alias{create.big.file.model.case1}
 \title{Simulate data matching the article}
 \usage{
-create.big.file.model.case1(fileX = "X.csv", fileY = "Y.csv", size.min,
-  p = 400, q = 500, chunk.size = 10000)
+create.big.file.model.case1(fileX = NULL, fileY = NULL, size.min = 1,
+  p = 400, q = 500, chunk.size = 10000, ng = NULL)
 }
 \arguments{
-\item{fileX}{filename of output X}
+\item{fileX}{filename of output X. If NULL then no file is written and the object is returned.}
 
-\item{fileY}{filename of output Y}
+\item{fileY}{filename of output Y. If NULL then no file is written and the object is returned.}
 
-\item{size.min}{minimum size for output X file}
+\item{size.min}{minimum size for output X and Y given in required Gb. Default 1.}
 
-\item{p}{number of parameters X block}
+\item{p}{number of parameters for X}
 
-\item{q}{number of parameters Y block}
+\item{q}{number of parameters for Y}
 
 \item{chunk.size}{size for chunks}
 }
