@@ -9,10 +9,11 @@ Big PLS (EMNIST)
 
 *See Also* [Example 1](Example-1-gPLS.md), [Example 2](Example-2-gPLS-DA.md) and [general documentation](../README.md)
 
+Set fileX and fileY to be the locations of the emnist dataset for the traning data set. For me this was located in the directory data.
 ``` r
 library(bigsgPLS)
-fileX <- "../data/emnist_images_training_set.csv"
-fileY <- "../data/emnist_labels_training_set.csv"
+fileX <- "data/emnist_images_training_set.csv"
+fileY <- "data/emnist_labels_training_set.csv"
 
 #-- Check the file size for the Y matrix --#
 file.info(fileX)$size
