@@ -7,13 +7,13 @@
 #'
 #' @param X matrix or big.matrix object for data measured on the same samples. Corresponds to predictors in Case 2.
 #' @param Y matrix or big.matrix object for data measured on the same samples. Corresponds to responses in Case 4.
-#' @param regularised type of regularisation
+#' @param regularised type of regularisation (can be one of "none", "sparse", "group" or "sparse group")
 #' @param keepX penalisation parameter numeric vector of length \code{H}, the number of variables
 #' to keep in \eqn{X}-loadings. By default all variables are kept in the model.
 #' @param keepY penalisation parameter numeric vector of length \code{H}, the number of variables
 #' to keep in \eqn{Y}-loadings. By default all variables are kept in the model.
 #' @param H the number of components to include in the model.
-#' @param case matches the Algorithm in the paper.
+#' @param case matches the Algorithm in the paper (1 = SVD, 2 = W2A, 3 = CCA, 4 = Regression).
 #' @param alpha.x The mixing parameter (value between 0 and 1) related to the sparsity within group for the X dataset.
 #' @param alpha.y The mixing parameter (value between 0 and 1) related to the sparsity within group for the Y dataset.
 #' @param ind.block.x a vector of integers describing the grouping of the \eqn{X}-variables.

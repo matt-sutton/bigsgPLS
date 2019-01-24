@@ -14,7 +14,7 @@ bigsgpls(X, Y, regularised = "none", keepX = NULL, keepY = NULL,
 
 \item{Y}{matrix or big.matrix object for data measured on the same samples. Corresponds to responses in Case 4.}
 
-\item{regularised}{type of regularisation}
+\item{regularised}{type of regularisation (can be one of "none", "sparse", "group" or "sparse group")}
 
 \item{keepX}{penalisation parameter numeric vector of length \code{H}, the number of variables
 to keep in \eqn{X}-loadings. By default all variables are kept in the model.}
@@ -28,7 +28,7 @@ to keep in \eqn{Y}-loadings. By default all variables are kept in the model.}
 
 \item{alpha.y}{The mixing parameter (value between 0 and 1) related to the sparsity within group for the Y dataset.}
 
-\item{case}{matches the Algorithm in the paper.}
+\item{case}{matches the Algorithm in the paper (1 = SVD, 2 = W2A, 3 = CCA, 4 = Regression).}
 
 \item{epsilon}{A positive real, the tolerance used in the iterative algorithm.}
 
