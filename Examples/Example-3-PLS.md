@@ -33,7 +33,7 @@ getDoParWorkers()
 #-- Read the training data using bigmemory package --#
 library(dummies)
 dataX <- read.big.matrix(fileX, header = FALSE, backingfile = "X.bin", descriptorfile = "X.desc", type = "double")
-Y <- dummy(read.csv(fileY, header = F)[,1]) + 0.0
+Y <- as.numeric(dummy(read.csv(fileY, header = F)[,1]))
 dataY <- as.big.matrix(Y, backingfile = "Y.bin", descriptorfile = "Y.desc", type = "double")
 
 #-- Make plot --#
