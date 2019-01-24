@@ -2,7 +2,7 @@
 Big sgPLS
 =========
 
-This example uses our package to run PLS on the EMNIST dataset. The data for this application can be found here: https://www.nist.gov/itl/iad/image-group/emnist-dataset.
+This example uses our package to run PLS on the EMNIST dataset. The data for this application can be found here: https://www.nist.gov/itl/iad/image-group/emnist-dataset. For the Big Data workshop it can be accessed here: https://cloudstor.aarnet.edu.au/plus/s/EYO3cd2cPp8Lpkk.
 
 Big PLS (EMNIST)
 ----------------------
