@@ -9,11 +9,11 @@ Big PLS (EMNIST)
 
 *See Also* [Example 1](Example-1-gPLS.md), [Example 2](Example-2-gPLS-DA.md) and [general documentation](../README.md)
 
-Set fileX and fileY to be the locations of the emnist dataset for the traning data set. For me this was located in the directory data.
+Set fileX and fileY to be the locations of the emnist dataset for the traning data set. 
 ``` r
 library(bigsgPLS)
-fileX <- "data/emnist_images_training_set.csv"
-fileY <- "data/emnist_labels_training_set.csv"
+fileX <- "emnist_images_training_set.csv"
+fileY <- "emnist_labels_training_set.csv"
 
 #-- Check the file size for the Y matrix --#
 file.info(fileX)$size
@@ -47,8 +47,8 @@ display(getFrame(Image(as.integer(t(dataX[1,])),c(28,28, 5)),1)/255, method = "r
 model.group.sparse.big <- bigsgpls(dataX, dataY, H = 20, case = 4, ng = 20)
 
 #-- Read the test data --#
-fileX <- "../data/emnist_images_test_set.csv"
-fileY <- "../data/emnist_labels_test_set.csv"
+fileX <- "emnist_images_test_set.csv"
+fileY <- "emnist_labels_test_set.csv"
 X.test <- as.matrix(read.csv(fileX, header = F)) # remove rowname column
 Y.test <- read.csv(fileY, header = F)
 
