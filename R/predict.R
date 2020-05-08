@@ -1,4 +1,4 @@
-#' predict.sgpls
+#' predict.bigsgPLS
 #'
 #' Predicted values based on (sparse or sparse group) PLS models. Regression coefficient and new predictions are given using the new observations.
 #'

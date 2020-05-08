@@ -2,6 +2,7 @@
 
 S3method(predict,bigsgPLS)
 export(bigsgpls)
+export(predict.bigsgPLS)
 export(create.big.file.model.case1)
 export(create.big.file.model.case3)
 import(Matrix)
