@@ -231,16 +231,15 @@ bigsgpls <- function(X,
 
     #-- Sparsifying loop for weight vectors --#
     if(regularised != "none"){
-      if( (sparsity.x[h] > 0) || (sparsity.y[h] > 0) )
-      {
+      if( (sparsity.x[h] > 0) || (sparsity.y[h] > 0) ){
         while ((my.norm(uh - uprevious) > epsilon)) {
 
           uprevious <- uh
 
-          lambda.x <- get_lambda(sparsity.x[h], ind.block.x, M0 %*% vh, 0)
+          lambda.x <- get_lambda(sparsity.x[h], ind.block.x, M0 %*% vh, alpha.x)
           uh <- Su(vh, M0, lambda.x) ; uh <- normalize(uh)       ## row 11
 
-          lambda.y <- get_lambda(sparsity.y[h], ind.block.y, t(M0) %*% uh, 0)
+          lambda.y <- get_lambda(sparsity.y[h], ind.block.y, t(M0) %*% uh, alpha.y)
           vh <- Sv(uh, M0, lambda.y) ; vh <- normalize(vh)       ## row 12
         }
       }
@@ -253,7 +252,7 @@ bigsgpls <- function(X,
 
     #-- Compute the PLS adjusted weights --#
 
-    if ( case %in% 1 ) { ## row 16
+    if ( case == 1 ) { ## row 16
       wh <- uh ; zh <- vh ## row 17
     } ## row 18
 
@@ -263,11 +262,11 @@ bigsgpls <- function(X,
       wh <- P %*% uh ; zh <- Q %*% vh ## row 22
     } ## row 23
 
-    if ( case %in% 3 ) {
+    if ( case == 3 ) {
       wh <- A %*% uh ; zh <- B %*% vh
       } ## row 24
 
-    if ( case %in% 4 ) { ## row 25
+    if ( case == 4 ) { ## row 25
       #P <- P %*% (Ip - uh %*% chm1T)  ## row 26
       if(h ==1) {wh=uh;zh=vh} else{
         P <- (Ip - Wnew[,1:(h-1)] %*% t(Cnew))  ## row 26
@@ -294,7 +293,7 @@ bigsgpls <- function(X,
 
     if ( case %in% 4 ) { ## row 37
 
-      if(class(Y) == "matrix") Y <- deflate(Y, xih, dhm1T, ng = ng)  else  deflate(Y, xih, dhm1T, ng = ng)
+      if(class(Y) == "matrix") {Y <- deflate(Y, xih, dhm1T, ng = ng)}  else  {deflate(Y, xih, dhm1T, ng = ng)}
 
     } else { ## row 39
 

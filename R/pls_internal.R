@@ -111,7 +111,7 @@ get_lambda<- function(sparsity, ind, x, alpha){
   {
     #-- internal function (used to set groups to 0 in sgPLS) --#
     lambda_sg_S <- function(lambda, Mv, alpha){
-      return(sum(soft.thresholding(Mv,lambda*alpha/2)**2)-length(Mv)*((1-alpha)*Mv)**2)
+      return(my.norm(soft.thresholding(Mv,lambda*alpha/2))-sqrt(length(Mv))*(1-alpha)*lambda)
     }
 
     #-- Find lambda needed for required groups --#
@@ -122,10 +122,9 @@ get_lambda<- function(sparsity, ind, x, alpha){
       vecx <- x[((tab.ind[i]+1):tab.ind[i+1])]
       upperlim <- 2*my.norm(vecx)
 
-      res <- c(res,stats::uniroot(lambda_sg_S, lower = 0, upper = upperlim, Mv = vecx, alpha = alpha))
+      res <- c(res,stats::uniroot(lambda_sg_S, lower = 0, upper = upperlim, Mv = vecx, alpha = alpha)$root)
     }
     lambda <- sort(res)[sparsity]
     return(lambda)
   }
-
 }

@@ -26,6 +26,7 @@ cpc <- function(X, Y, ng = 1, GPU) {
 # fast for large n  (p, r << n)
 #
 prodchunk <- function(mat, weight, ng = 1) {
+  weight <- as.matrix(weight)
   n <- nrow(mat)
   size.chunk <- n / ng
 
@@ -38,16 +39,23 @@ prodchunk <- function(mat, weight, ng = 1) {
 
 #-- Internal big data function for deflating  --#
 deflate <- function(X, score, loading, ng=1) {
-
-  n <- nrow(X)
-  size.chunk <- n / ng
-  foreach(g = 1:ng, .packages = c("bigsgPLS")) %dopar% {
-    rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
-    X[rows,] <- X[rows,] - score[rows]%*%loading
-    if(class(X)!="matrix") gc()
+  if(class(X) == "matrix"){
+    n <- nrow(X)
+    size.chunk <- n / ng
+    Xnew <- foreach(g = 1:ng, .packages = c("bigsgPLS"), .combine = 'rbind') %dopar% {
+      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+      X[rows,] - score[rows]%*%loading
+    }
+    return(Xnew)
+  } else {
+    n <- nrow(X)
+    size.chunk <- n / ng
+    foreach(g = 1:ng, .packages = c("bigsgPLS")) %dopar% {
+      rows <- ((g - 1) * size.chunk + 1):(g * size.chunk)
+      X[rows,] <- X[rows,] - score[rows]%*%loading
+    }
+    gc()
   }
-  if(class(X) == "matrix")
-    return(X)
 }
 
 bigscale <- function(X, ng = 1) {
